@@ -3,7 +3,7 @@
 ##############
 
 resource "aws_iam_role" "python_lambda_create_iam" {
-  name               = local.python_lambda_iam_role_name
+  name               = local.python_lambda_create_iam_role_name
   assume_role_policy = data.aws_iam_policy_document.assume_role_lambda.json
 }
 
