@@ -24,7 +24,8 @@ def lambda_handler (event, context):
 
   item = {
     'item': 'test',
-    'isValid': False,
+    'isUpdated': False,
+    'isChecked': False,
   }
 
   client.put_object(

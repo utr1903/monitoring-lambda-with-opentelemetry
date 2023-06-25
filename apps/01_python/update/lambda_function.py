@@ -32,7 +32,7 @@ def lambda_handler (event, context):
 
   logger.info(item)
 
-  item['isValid'] = True
+  item['isUpdated'] = True
 
   client.put_object(
     Body=json.dumps(item),
