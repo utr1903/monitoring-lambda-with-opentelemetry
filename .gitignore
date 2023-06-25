@@ -1,3 +1,6 @@
+# Ignore the tmp folder within the root directory
+tmp
+
 # Local .terraform directories
 **/.terraform/*
 
@@ -32,3 +35,7 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ignore lock and plan
+.terraform.lock.hcl
+tfplan
