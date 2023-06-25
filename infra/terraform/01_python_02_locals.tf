@@ -14,6 +14,6 @@ locals {
   # Lambda
   python_lambda_iam_role_name                   = "python_lambda_create_iam_role"
   python_lambda_create_function_name            = "python-lambda-create-otel"
-  python_lambda_create_function_source_dir_path = "../../apps/python/create"
+  python_lambda_create_function_source_dir_path = "../../apps/01_python/create"
   python_lambda_create_function_zip_file_path   = "../../tmp/python_lambda_create.zip"
 }
