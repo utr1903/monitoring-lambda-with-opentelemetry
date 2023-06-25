@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 client = boto3.client('s3')
 
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+INPUT_S3_BUCKET_NAME = os.getenv('INPUT_S3_BUCKET_NAME')
 
 def lambda_handler (event, context):
 
@@ -29,7 +29,7 @@ def lambda_handler (event, context):
 
   client.put_object(
     Body=json.dumps(item),
-    Bucket=S3_BUCKET_NAME,
+    Bucket=INPUT_S3_BUCKET_NAME,
     Key=f'items/{now}.json',
   )
 

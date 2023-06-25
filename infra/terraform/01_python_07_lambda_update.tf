@@ -57,7 +57,7 @@ resource "aws_lambda_function" "python_update" {
       OPENTELEMETRY_COLLECTOR_CONFIG_FILE = "/var/task/otel/collector.yaml"
       NEWRELIC_OTLP_ENDPOINT              = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
       NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
-      S3_BUCKET_NAME                      = aws_s3_bucket.python.id
+      OUTPUT_S3_BUCKET_NAME               = aws_s3_bucket.python_output.id
     }
   }
 
@@ -67,16 +67,18 @@ resource "aws_lambda_function" "python_update" {
   ]
 }
 
+# Lambda permission for S3 to invoke
 resource "aws_lambda_permission" "allow_s3_bucket_for_python_update" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.python_update.arn
   principal     = "s3.amazonaws.com"
-  source_arn    = aws_s3_bucket.python.arn
+  source_arn    = aws_s3_bucket.python_input.arn
 }
 
-resource "aws_s3_bucket_notification" "thumbnail_notification" {
-  bucket = aws_s3_bucket.python.id
+# S3 trigger for Lambda
+resource "aws_s3_bucket_notification" "python_update_s3_trigger" {
+  bucket = aws_s3_bucket.python_input.id
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.python_update.arn

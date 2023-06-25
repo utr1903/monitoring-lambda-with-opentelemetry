@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 
+import os
 import boto3
 import json
 import logging
@@ -12,6 +13,8 @@ if logger.handlers:
 logging.basicConfig(level=logging.INFO)
 
 client = boto3.client('s3')
+
+OUTPUT_S3_BUCKET_NAME = os.getenv('OUTPUT_S3_BUCKET_NAME')
 
 def lambda_handler (event, context):
 
@@ -33,6 +36,6 @@ def lambda_handler (event, context):
 
   client.put_object(
     Body=json.dumps(item),
-    Bucket=s3BucketName,
+    Bucket=OUTPUT_S3_BUCKET_NAME,
     Key=s3BucketKey,
   )
