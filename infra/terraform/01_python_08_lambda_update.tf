@@ -14,6 +14,12 @@ resource "aws_iam_role_policy_attachment" "python_lambda_update_s3_full_access" 
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
+# IAM policy attachment for Lambda to have full SQS access
+resource "aws_iam_role_policy_attachment" "python_lambda_update_sqs_full_access" {
+  role       = aws_iam_role.python_lambda_update_iam.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+}
+
 # Cloudwatch log group for Lambda
 resource "aws_cloudwatch_log_group" "python_lambda_update" {
   name              = "/aws/lambda/${local.python_lambda_update_function_name}"
@@ -58,6 +64,7 @@ resource "aws_lambda_function" "python_update" {
       NEWRELIC_OTLP_ENDPOINT              = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
       NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
       OUTPUT_S3_BUCKET_NAME               = aws_s3_bucket.python_output.id
+      SQS_QUEUE_URL                       = aws_sqs_queue.python_queue.url
     }
   }
 
