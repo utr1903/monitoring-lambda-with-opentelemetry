@@ -6,8 +6,12 @@ import json
 import logging
 from datetime import datetime
 
-logging.basicConfig(level = logging.INFO)
+# Reset and init logger
 logger = logging.getLogger()
+if logger.handlers:
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+logging.basicConfig(level=logging.INFO)
 
 client = boto3.client('s3')
 
@@ -15,15 +19,13 @@ S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
 def lambda_handler (event, context):
 
-  logger.info(S3_BUCKET_NAME)
+  now = datetime.now().timestamp()
+  logger.info(f'timestamp:{now}')
 
   item = {
     'item': 'test',
     'isValid': False,
   }
-  logger.info(item)
-
-  now = datetime.today().isoformat()
 
   client.put_object(
     Body=json.dumps(item),
