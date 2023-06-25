@@ -5,7 +5,7 @@ locals {
   ##############
 
   # S3 Bucket
-  s3_bucket_name = "monitoring-lambda-with-opentelemetry"
+  python_s3_bucket_name = "utr1903-monitoring-lambda-with-opentelemetry-python"
 
   # API Gateway
   python_api_gateway_name       = "python_api_gateway"
