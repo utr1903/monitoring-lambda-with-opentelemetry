@@ -50,7 +50,7 @@ resource "aws_apigatewayv2_integration" "python" {
 }
 
 # API gateway route
-resource "aws_apigatewayv2_route" "hello_world" {
+resource "aws_apigatewayv2_route" "create" {
   api_id = aws_apigatewayv2_api.python.id
 
   route_key = "POST /create"

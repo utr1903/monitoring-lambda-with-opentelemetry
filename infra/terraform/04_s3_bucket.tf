@@ -3,11 +3,11 @@
 ##########
 
 resource "aws_s3_bucket" "items" {
-  bucket = "monitoring-lambda-with-opentelemetry"
+  bucket = local.s3_bucket_name
 
   force_destroy = true
 
   tags = {
-    Name = "monitoring-lambda-with-opentelemetry"
+    name = local.s3_bucket_name
   }
 }

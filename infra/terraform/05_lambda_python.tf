@@ -2,24 +2,24 @@
 ### Lambda ###
 ##############
 
-resource "aws_iam_role" "python_iam_for_lambda" {
+resource "aws_iam_role" "python_lambda_create_iam" {
   name               = local.python_lambda_iam_role_name
   assume_role_policy = data.aws_iam_policy_document.assume_role_lambda.json
 }
 
-resource "aws_iam_role_policy_attachment" "python_s3_full_access" {
-  role       = aws_iam_role.python_iam_for_lambda.name
+resource "aws_iam_role_policy_attachment" "python_lambda_create_s3_full_access" {
+  role       = aws_iam_role.python_lambda_create_iam.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
 resource "aws_lambda_function" "python_create" {
-  filename      = local.python_lambda_function_zip_file_path
-  function_name = local.python_lambda_function_name
+  filename      = local.python_lambda_create_function_zip_file_path
+  function_name = local.python_lambda_create_function_name
 
-  role    = aws_iam_role.python_iam_for_lambda.arn
+  role    = aws_iam_role.python_lambda_create_iam.arn
   handler = "lambda_function.lambda_handler"
 
-  source_code_hash = data.archive_file.python_lambda.output_base64sha256
+  source_code_hash = data.archive_file.python_lambda_create.output_base64sha256
 
   runtime = "python3.10"
   timeout = 10
