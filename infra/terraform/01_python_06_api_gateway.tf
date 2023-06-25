@@ -58,7 +58,7 @@ resource "aws_apigatewayv2_route" "create" {
 }
 
 # Lambda permission for API gateway to invoke
-resource "aws_lambda_permission" "api_gateway_python" {
+resource "aws_lambda_permission" "allow_api_gateway_for_python_create" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.python_create.function_name
