@@ -4,6 +4,7 @@ import os
 import boto3
 import json
 import logging
+from datetime import datetime
 
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger()
@@ -16,15 +17,18 @@ def lambda_handler (event, context):
 
   logger.info(S3_BUCKET_NAME)
 
-  test = {
-    'test': 'test',
+  item = {
+    'item': 'test',
+    'isValid': False,
   }
-  logger.info(test)
+  logger.info(item)
+
+  now = datetime.today().isoformat()
 
   client.put_object(
-    Body=json.dumps(test),
+    Body=json.dumps(item),
     Bucket=S3_BUCKET_NAME,
-    Key='test/test.json',
+    Key=f'items/{now}.json',
   )
 
   return {
@@ -32,5 +36,5 @@ def lambda_handler (event, context):
     'headers': {
       'Content-Type': 'application/ison'
     },
-    'body': json.dumps(test),
+    'body': json.dumps(item),
   }
