@@ -24,10 +24,3 @@ def lambda_handler (event, context):
   inputBucket.objects.all().delete()
 
   logger.info('All objects in input bucket are deleted.')
-
-  logger.info('Deleting all objects in output bucket...')
-
-  outputBucket = s3.Bucket(OUTPUT_S3_BUCKET_NAME)
-  outputBucket.objects.all().delete()
-
-  logger.info('All objects in output bucket are deleted.')
