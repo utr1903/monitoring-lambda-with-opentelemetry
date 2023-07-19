@@ -1,9 +1,5 @@
 locals {
 
-  ##############
-  ### Python ###
-  ##############
-
   # S3 Bucket
   python_input_s3_bucket_name  = "utr1903-input-monitoring-lambda-with-opentelemetry-python"
   python_output_s3_bucket_name = "utr1903-output-monitoring-lambda-with-opentelemetry-python"
