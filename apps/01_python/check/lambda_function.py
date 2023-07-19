@@ -16,24 +16,39 @@ client = boto3.client('s3')
 
 def lambda_handler (event, context):
 
-  s3BucketName = event['Records'][0]['s3']['bucket']['name']
-  s3BucketKey = event['Records'][0]['s3']['object']['key']
+  logger.info(json.dumps(event))
 
-  logger.info(s3BucketName)
-  logger.info(s3BucketKey)
+  for record in event['Records']:
 
-  item = json.loads(
-    client.get_object(
+    # Parse
+    logger.info('Parsing message...')
+
+    message = json.loads(record['body'])
+    s3BucketName = message['bucket']
+    s3BucketKey = message['key']
+
+    logger.info('Message is parsed.')
+
+    # Retrieve
+    logger.info('Retrieving item from S3...')
+    
+    item = json.loads(
+      client.get_object(
+        Bucket=s3BucketName,
+        Key=s3BucketKey,
+      )['Body'].read())
+
+    logger.info('Item is retrieved from S3.')
+
+    # Check
+    logger.info('Checking item in S3...')
+
+    item['isChecked'] = True
+
+    client.put_object(
+      Body=json.dumps(item),
       Bucket=s3BucketName,
       Key=s3BucketKey,
-    )['Body'].read())
+    )
 
-  logger.info(item)
-
-  item['isChecked'] = True
-
-  client.put_object(
-    Body=json.dumps(item),
-    Bucket=s3BucketName,
-    Key=s3BucketKey,
-  )
+    logger.info('Item in S3 is checked.')
