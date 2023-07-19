@@ -17,35 +17,35 @@ data "aws_iam_policy_document" "assume_role_lambda" {
 }
 
 # Lambda - create
-data "archive_file" "python_lambda_create" {
+data "archive_file" "lambda_create" {
   type        = "zip"
-  source_dir  = local.python_lambda_create_function_source_dir_path
-  output_path = local.python_lambda_create_function_zip_file_path
+  source_dir  = local.lambda_create_function_source_dir_path
+  output_path = local.lambda_create_function_zip_file_path
 }
 
 # Lambda - update
-data "archive_file" "python_lambda_update" {
+data "archive_file" "lambda_update" {
   type        = "zip"
-  source_dir  = local.python_lambda_update_function_source_dir_path
-  output_path = local.python_lambda_update_function_zip_file_path
+  source_dir  = local.lambda_update_function_source_dir_path
+  output_path = local.lambda_update_function_zip_file_path
 }
 
 # Lambda - delete
-data "archive_file" "python_lambda_delete" {
+data "archive_file" "lambda_delete" {
   type        = "zip"
-  source_dir  = local.python_lambda_delete_function_source_dir_path
-  output_path = local.python_lambda_delete_function_zip_file_path
+  source_dir  = local.lambda_delete_function_source_dir_path
+  output_path = local.lambda_delete_function_zip_file_path
 }
 
 # Lambda - check
-data "archive_file" "python_lambda_check" {
+data "archive_file" "lambda_check" {
   type        = "zip"
-  source_dir  = local.python_lambda_check_function_source_dir_path
-  output_path = local.python_lambda_check_function_zip_file_path
+  source_dir  = local.lambda_check_function_source_dir_path
+  output_path = local.lambda_check_function_zip_file_path
 }
 
 # IAM policy doc for Lambda logging
-data "aws_iam_policy_document" "python_lambda_logging" {
+data "aws_iam_policy_document" "lambda_logging" {
   statement {
     effect = "Allow"
 
