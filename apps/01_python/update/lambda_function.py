@@ -56,6 +56,7 @@ def lambda_handler (event, context):
   }
 
   response = clientSqs.send_message(
+      MessageGroupId="otel",
       QueueUrl=SQS_QUEUE_URL,
       MessageBody=json.dumps(message)
   )
