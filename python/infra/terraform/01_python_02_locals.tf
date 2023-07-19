@@ -18,24 +18,24 @@ locals {
   # Lambda - create
   python_lambda_create_iam_role_name            = "python_lambda_create_iam_role"
   python_lambda_create_function_name            = "python-lambda-create-otel"
-  python_lambda_create_function_source_dir_path = "../../apps/01_python/create"
-  python_lambda_create_function_zip_file_path   = "../../tmp/python_lambda_create.zip"
+  python_lambda_create_function_source_dir_path = "../../apps/create"
+  python_lambda_create_function_zip_file_path   = "../../../tmp/python_lambda_create.zip"
 
   # Lambda - update
   python_lambda_update_iam_role_name            = "python_lambda_update_iam_role"
   python_lambda_update_function_name            = "python-lambda-update-otel"
-  python_lambda_update_function_source_dir_path = "../../apps/01_python/update"
-  python_lambda_update_function_zip_file_path   = "../../tmp/python_lambda_update.zip"
+  python_lambda_update_function_source_dir_path = "../../apps/update"
+  python_lambda_update_function_zip_file_path   = "../../../tmp/python_lambda_update.zip"
 
   # Lambda - delete
   python_lambda_delete_iam_role_name            = "python_lambda_delete_iam_role"
   python_lambda_delete_function_name            = "python-lambda-delete-otel"
-  python_lambda_delete_function_source_dir_path = "../../apps/01_python/delete"
-  python_lambda_delete_function_zip_file_path   = "../../tmp/python_lambda_delete.zip"
+  python_lambda_delete_function_source_dir_path = "../../apps/delete"
+  python_lambda_delete_function_zip_file_path   = "../../../tmp/python_lambda_delete.zip"
 
   # Lambda - check
   python_lambda_check_iam_role_name            = "python_lambda_check_iam_role"
   python_lambda_check_function_name            = "python-lambda-check-otel"
-  python_lambda_check_function_source_dir_path = "../../apps/01_python/check"
-  python_lambda_check_function_zip_file_path   = "../../tmp/python_lambda_check.zip"
+  python_lambda_check_function_source_dir_path = "../../apps/check"
+  python_lambda_check_function_zip_file_path   = "../../../tmp/python_lambda_check.zip"
 }
