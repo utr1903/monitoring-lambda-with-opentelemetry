@@ -14,6 +14,12 @@ resource "aws_iam_role_policy_attachment" "python_lambda_check_s3_full_access" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
+# IAM policy attachment for Lambda to have full SQS access
+resource "aws_iam_role_policy_attachment" "python_lambda_check_sqs_full_access" {
+  role       = aws_iam_role.python_lambda_check_iam.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+}
+
 # Cloudwatch log group for Lambda
 resource "aws_cloudwatch_log_group" "python_lambda_check" {
   name              = "/aws/lambda/${local.python_lambda_check_function_name}"
