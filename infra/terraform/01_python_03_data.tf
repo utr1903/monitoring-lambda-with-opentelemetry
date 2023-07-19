@@ -23,6 +23,13 @@ data "archive_file" "python_lambda_delete" {
   output_path = local.python_lambda_delete_function_zip_file_path
 }
 
+# Lambda - check
+data "archive_file" "python_lambda_check" {
+  type        = "zip"
+  source_dir  = local.python_lambda_check_function_source_dir_path
+  output_path = local.python_lambda_check_function_zip_file_path
+}
+
 # IAM policy doc for Lambda logging
 data "aws_iam_policy_document" "python_lambda_logging" {
   statement {

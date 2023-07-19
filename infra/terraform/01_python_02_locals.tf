@@ -8,6 +8,9 @@ locals {
   python_input_s3_bucket_name  = "utr1903-input-monitoring-lambda-with-opentelemetry-python"
   python_output_s3_bucket_name = "utr1903-output-monitoring-lambda-with-opentelemetry-python"
 
+  # SQS
+  python_sqs_queue_name = "python-sqs-queue.fifo"
+
   # API Gateway
   python_api_gateway_name       = "python_api_gateway"
   python_api_gateway_stage_name = "prod"
@@ -29,4 +32,10 @@ locals {
   python_lambda_delete_function_name            = "python-lambda-delete-otel"
   python_lambda_delete_function_source_dir_path = "../../apps/01_python/delete"
   python_lambda_delete_function_zip_file_path   = "../../tmp/python_lambda_delete.zip"
+
+  # Lambda - check
+  python_lambda_check_iam_role_name            = "python_lambda_check_iam_role"
+  python_lambda_check_function_name            = "python-lambda-check-otel"
+  python_lambda_check_function_source_dir_path = "../../apps/01_python/check"
+  python_lambda_check_function_zip_file_path   = "../../tmp/python_lambda_check.zip"
 }
