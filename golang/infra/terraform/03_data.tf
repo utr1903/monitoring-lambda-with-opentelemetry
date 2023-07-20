@@ -26,12 +26,12 @@ data "archive_file" "lambda_create" {
   output_path = local.lambda_create_function_zip_file_path
 }
 
-# # Lambda - update
-# data "archive_file" "lambda_update" {
-#   type        = "zip"
-#   source_dir  = local.lambda_update_function_source_dir_path
-#   output_path = local.lambda_update_function_zip_file_path
-# }
+# Lambda - update
+data "archive_file" "lambda_update" {
+  type        = "zip"
+  source_dir  = local.lambda_update_function_source_dir_path
+  output_path = local.lambda_update_function_zip_file_path
+}
 
 # # Lambda - delete
 # data "archive_file" "lambda_delete" {
