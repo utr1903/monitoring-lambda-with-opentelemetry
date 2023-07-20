@@ -18,7 +18,7 @@ while (( "$#" )); do
 done
 
 ### Build Go binaries
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/create -o ../../apps/create/bin/main main.go
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/create -o ../../apps/create/bootstrap main.go
 
 if [[ $flagDestroy != "true" ]]; then
 
