@@ -79,28 +79,8 @@ func HandleRequest(
 	error,
 ) {
 
-	fmt.Println("Path: " + req.Path)
-	fmt.Println("HTTPMethod: " + req.HTTPMethod)
-	fmt.Println("Resource: " + req.Resource)
-
-	fmt.Println("RequestContext.RequestID: " + req.RequestContext.RequestID)
-	fmt.Println("RequestContext.HTTPMethod : " + req.RequestContext.HTTPMethod)
-	fmt.Println("RequestContext.Protocol: " + req.RequestContext.Protocol)
-	fmt.Println("RequestContext.Path: " + req.RequestContext.Path)
-
-	// Create tracer
-	tracer := otel.Tracer(OTEL_SERVICE_NAME)
-
-	// Get context
-	ctx := context.Background()
-
 	// Start parent span
-	ctx, parentSpan := tracer.Start(ctx, "main.HandleRequest",
-		trace.WithSpanKind(trace.SpanKindServer),
-		trace.WithAttributes([]attribute.KeyValue{
-			semconv.FaaSTriggerHTTP,
-			semconv.NetTransportTCP,
-		}...))
+	ctx, parentSpan := startParentSpan(req)
 	defer parentSpan.End()
 
 	// Create object
@@ -151,13 +131,8 @@ func storeObjectInS3(
 	jsonBody []byte,
 ) error {
 
-	// Start S3 span
-	ctx, s3PutSpan := parentSpan.TracerProvider().Tracer(OTEL_SERVICE_NAME).
-		Start(ctx, "S3.PutObject",
-			trace.WithSpanKind(trace.SpanKindClient),
-			trace.WithAttributes([]attribute.KeyValue{
-				semconv.NetTransportTCP,
-			}...))
+	// Start S3 put span
+	ctx, s3PutSpan := startS3PutSpan(ctx, parentSpan)
 	defer s3PutSpan.End()
 
 	// Upload object to S3
@@ -179,12 +154,46 @@ func storeObjectInS3(
 	return err
 }
 
-// func getCommonAttributes(
-// 	req events.APIGatewayProxyRequest,
-// ) []attribute.KeyValue {
-// 	return []attribute.KeyValue{
-// 		// attribute.String("aws.region", AWS_REGION),
-// 		// semconv.FaaSTriggerHTTP, -> only for server
-// 		semconv.NetTransportTCP,
-// 	}
-// }
+func startParentSpan(
+	req events.APIGatewayProxyRequest,
+) (
+	context.Context,
+	trace.Span,
+) {
+	// Create tracer
+	tracer := otel.Tracer(OTEL_SERVICE_NAME)
+
+	// Get context
+	ctx := context.Background()
+
+	// Start parent span
+	return tracer.Start(ctx, "main.HandleRequest",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes([]attribute.KeyValue{
+			semconv.FaaSTriggerHTTP,
+			semconv.NetTransportTCP,
+			semconv.HTTPMethod(req.HTTPMethod),
+			semconv.HTTPFlavorKey.String(req.RequestContext.Protocol),
+			semconv.HTTPRoute(req.Resource),
+			semconv.HTTPTarget(req.Resource),
+			semconv.HTTPScheme(req.Headers["X-Forwarded-Proto"]),
+			semconv.HTTPUserAgent(req.Headers["User-Agent"]),
+			semconv.NetHostName(req.Headers["Host"]),
+		}...))
+}
+
+func startS3PutSpan(
+	ctx context.Context,
+	parentSpan trace.Span,
+) (
+	context.Context,
+	trace.Span,
+) {
+	// Start S3 put span
+	return parentSpan.TracerProvider().Tracer(OTEL_SERVICE_NAME).
+		Start(ctx, "S3.PutObject",
+			trace.WithSpanKind(trace.SpanKindClient),
+			trace.WithAttributes([]attribute.KeyValue{
+				semconv.NetTransportTCP,
+			}...))
+}
