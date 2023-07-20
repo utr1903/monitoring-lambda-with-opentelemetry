@@ -24,7 +24,6 @@ import (
 )
 
 var (
-	AWS_REGION           string
 	OTEL_SERVICE_NAME    string
 	INPUT_S3_BUCKET_NAME string
 	uploader             *s3manager.Uploader
@@ -39,7 +38,6 @@ type CustomObject struct {
 func main() {
 
 	// Parse environment variables
-	AWS_REGION = os.Getenv("AWS_REGION")
 	OTEL_SERVICE_NAME = os.Getenv("OTEL_SERVICE_NAME")
 	INPUT_S3_BUCKET_NAME = os.Getenv("INPUT_S3_BUCKET_NAME")
 
