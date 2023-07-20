@@ -46,7 +46,7 @@ resource "aws_lambda_function" "update" {
   function_name = local.lambda_update_function_name
 
   role    = aws_iam_role.lambda_update_iam.arn
-  handler = "lambda_function.lambda_handler"
+  handler = "main"
 
   source_code_hash = data.archive_file.lambda_update.output_base64sha256
 
