@@ -69,10 +69,10 @@ func main() {
 	otel.SetTextMapPropagator(xray.Propagator{})
 
 	// Wrap handler & instrument
-	lambda.Start(otellambda.InstrumentHandler(HandleRequest, xrayconfig.WithRecommendedOptions(tp)...))
+	lambda.Start(otellambda.InstrumentHandler(handler, xrayconfig.WithRecommendedOptions(tp)...))
 }
 
-func HandleRequest(
+func handler(
 	req events.APIGatewayProxyRequest,
 ) (
 	events.APIGatewayProxyResponse,
@@ -167,7 +167,7 @@ func startParentSpan(
 	ctx := context.Background()
 
 	// Start parent span
-	return tracer.Start(ctx, "main.HandleRequest",
+	return tracer.Start(ctx, "main.handler",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes([]attribute.KeyValue{
 			semconv.FaaSTriggerHTTP,
