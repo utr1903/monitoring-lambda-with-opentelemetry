@@ -44,11 +44,18 @@ resource "aws_lambda_function" "create" {
 
   source_code_hash = data.archive_file.lambda_create.output_base64sha256
 
-  runtime = "go1.x"
+  runtime = "provided.al2"
   timeout = 10
+
+  layers = [
+    "arn:aws:lambda:${var.AWS_REGION}:901920570463:layer:aws-otel-collector-amd64-ver-0-78-2:1"
+  ]
 
   environment {
     variables = {
+      OTEL_SERVICE_NAME                   = local.lambda_create_function_name
+      OTEL_RESOURCE_ATTRIBUTES            = "cloud.account.id=${data.aws_caller_identity.current.account_id},cloud.platfrom=aws_lambda"
+      OPENTELEMETRY_COLLECTOR_CONFIG_FILE = "/var/task/collector.yaml"
       NEWRELIC_OTLP_ENDPOINT              = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
       NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
       INPUT_S3_BUCKET_NAME                = aws_s3_bucket.input.id

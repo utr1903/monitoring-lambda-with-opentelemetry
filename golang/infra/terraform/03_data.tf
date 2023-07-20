@@ -2,6 +2,9 @@
 ### Data ###
 ############
 
+# Caller identity
+data "aws_caller_identity" "current" {}
+
 # IAM policy doc for Lambda
 data "aws_iam_policy_document" "assume_role_lambda" {
   statement {
