@@ -1,3 +1,12 @@
+###############
+### VS Code ###
+###############
+.vscode
+
+#################
+### Terraform ###
+#################
+
 # Ignore the tmp folder within the root directory
 tmp
 
