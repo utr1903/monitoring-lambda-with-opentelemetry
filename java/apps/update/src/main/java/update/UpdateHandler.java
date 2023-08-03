@@ -11,6 +11,9 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification.S3EventNotificationRecord;
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
 import com.google.gson.Gson;
 
 import software.amazon.awssdk.core.ResponseBytes;
@@ -35,18 +38,23 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
   private LambdaLogger logger;
 
   private static String OUTPUT_S3_BUCKET_NAME;
+  private static String SQS_QUEUE_URL;
 
   private Gson gson = new Gson();
 
   private final static S3Client s3Client;
+  private final static AmazonSQS sqs;
 
   static {
     final String region = System.getenv(SdkSystemSetting.AWS_REGION.environmentVariable());
     final Region awsRegion = region != null ? Region.of(region) : Region.EU_WEST_1;
+
     s3Client = S3Client.builder()
         .httpClient(UrlConnectionHttpClient.builder().build())
         .region(awsRegion)
         .build();
+
+    sqs = AmazonSQSClientBuilder.defaultClient();
   }
 
   @Override
@@ -75,6 +83,9 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
       // Store the custom object in S3
       storeCustomObjectInOutputS3(customObjectUpdatedAsString);
 
+      // Send custom object to SQS
+      sendCustomObjectToSqs(customObjectAsString);
+
       logger.log("Updating custom object is succeeded.");
       return null;
     } catch (Exception e) {
@@ -86,6 +97,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
   private void parseEnvVars() {
     logger.log("Parsing env vars...");
     OUTPUT_S3_BUCKET_NAME = System.getenv("OUTPUT_S3_BUCKET_NAME");
+    SQS_QUEUE_URL = System.getenv("SQS_QUEUE_URL");
     logger.log("Parsing env vars is succeeded.");
   }
 
@@ -166,5 +178,20 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
       throw new RuntimeException("getByteArrayOutputStream failed", e);
     }
     return byteArrayOutputStream;
+  }
+
+  private void sendCustomObjectToSqs(
+      String customObjectUpdatedAsString) {
+
+    logger.log("Sending updated custom object...");
+
+    // Send updated custom object to SQS queue
+    SendMessageRequest req = new SendMessageRequest()
+        .withMessageGroupId("otel")
+        .withQueueUrl(SQS_QUEUE_URL)
+        .withMessageBody(customObjectUpdatedAsString);
+    sqs.sendMessage(req);
+
+    logger.log("Sending updated custom object is succeeded.");
   }
 }
