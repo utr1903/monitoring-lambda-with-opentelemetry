@@ -27,6 +27,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
+  static {
+    // https://docs.aws.amazon.com/de_de/sdk-for-java/latest/developer-guide/security-java-tls.html
+    System.setProperty("jdk.tls.client.protocols", "TLSv1.2");
+  }
+
   static Logger logger = LoggerFactory.getLogger(CreateHandler.class);
 
   private static String INPUT_S3_BUCKET_NAME;
