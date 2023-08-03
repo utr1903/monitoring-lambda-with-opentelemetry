@@ -19,10 +19,11 @@ locals {
   lambda_create_collector_config_zip_path = "../../apps/create/otel/collector.zip"
 
   # Lambda - update
-  lambda_update_iam_role_name            = "java_lambda_update_iam_role"
-  lambda_update_function_name            = "java-lambda-update-otel"
-  lambda_update_function_source_dir_path = "../../apps/update"
-  lambda_update_function_zip_file_path   = "../../../tmp/java_lambda_update.zip"
+  lambda_update_iam_role_name             = "java_lambda_update_iam_role"
+  lambda_update_function_name             = "java-lambda-update-otel"
+  lambda_update_function_jar_file_path    = "../../apps/update/target/update.jar"
+  lambda_update_collector_config_dir_path = "../../apps/update/otel"
+  lambda_update_collector_config_zip_path = "../../apps/update/otel/collector.zip"
 
   # Lambda - delete
   lambda_delete_iam_role_name            = "java_lambda_delete_iam_role"

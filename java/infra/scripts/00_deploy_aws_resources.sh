@@ -19,6 +19,7 @@ done
 
 ### Build jar files
 mvn clean install package -f ../../apps/create/pom.xml
+mvn clean install package -f ../../apps/update/pom.xml
 
 if [[ $flagDestroy != "true" ]]; then
 
