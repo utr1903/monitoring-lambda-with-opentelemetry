@@ -26,14 +26,16 @@ locals {
   lambda_update_collector_config_zip_path = "../../apps/update/otel/collector.zip"
 
   # Lambda - delete
-  lambda_delete_iam_role_name            = "java_lambda_delete_iam_role"
-  lambda_delete_function_name            = "java-lambda-delete-otel"
-  lambda_delete_function_source_dir_path = "../../apps/delete"
-  lambda_delete_function_zip_file_path   = "../../../tmp/java_lambda_delete.zip"
+  lambda_delete_iam_role_name             = "java_lambda_delete_iam_role"
+  lambda_delete_function_name             = "java-lambda-delete-otel"
+  lambda_delete_function_jar_file_path    = "../../apps/delete/target/delete.jar"
+  lambda_delete_collector_config_dir_path = "../../apps/delete/otel"
+  lambda_delete_collector_config_zip_path = "../../apps/delete/otel/collector.zip"
 
   # Lambda - check
-  lambda_check_iam_role_name            = "java_lambda_check_iam_role"
-  lambda_check_function_name            = "java-lambda-check-otel"
-  lambda_check_function_source_dir_path = "../../apps/check"
-  lambda_check_function_zip_file_path   = "../../../tmp/java_lambda_check.zip"
+  lambda_check_iam_role_name             = "java_lambda_check_iam_role"
+  lambda_check_function_name             = "java-lambda-check-otel"
+  lambda_check_function_jar_file_path    = "../../apps/check/target/check.jar"
+  lambda_check_collector_config_dir_path = "../../apps/check/otel"
+  lambda_check_collector_config_zip_path = "../../apps/check/otel/collector.zip"
 }

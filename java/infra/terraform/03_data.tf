@@ -30,6 +30,20 @@ data "archive_file" "lambda_update_collector_config" {
   output_path = local.lambda_update_collector_config_zip_path
 }
 
+# Lambda - delete
+data "archive_file" "lambda_delete_collector_config" {
+  type        = "zip"
+  source_dir  = local.lambda_delete_collector_config_dir_path
+  output_path = local.lambda_delete_collector_config_zip_path
+}
+
+# Lambda - check
+data "archive_file" "lambda_check_collector_config" {
+  type        = "zip"
+  source_dir  = local.lambda_check_collector_config_dir_path
+  output_path = local.lambda_check_collector_config_zip_path
+}
+
 # IAM policy doc for Lambda logging
 data "aws_iam_policy_document" "lambda_logging" {
   statement {
