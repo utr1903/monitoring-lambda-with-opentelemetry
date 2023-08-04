@@ -15,6 +15,10 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.Gson;
 
 import create.daos.CustomObject;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.ContentStreamProvider;
@@ -33,6 +37,7 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
   private LambdaLogger logger;
 
   private static String INPUT_S3_BUCKET_NAME;
+  private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateError";
 
   private final static S3Client s3Client;
   private Gson gson = new Gson();
@@ -69,6 +74,17 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
       return createResponse(200, json);
     } catch (Exception e) {
       logger.log("Storing custom object into S3 is failed! Exception: " + e);
+
+      Span span = Span.current();
+      span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
+      span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, e.getMessage());
+
+      Attributes eventAttributes = Attributes.of(
+          AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+          AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+      span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+
       return createResponse(500, e.getMessage());
     }
   }
@@ -84,6 +100,12 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
         "test",
         false,
         false);
+  }
+
+  private String getStringOfCustomObject(
+      CustomObject customObject) {
+    // Convert object to string
+    return gson.toJson(customObject);
   }
 
   private void storeObjectInS3(
@@ -112,12 +134,6 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
         }, jsonByteStream.toByteArray().length, "application/json"));
 
     logger.log("Storing custom object into S3 is succeeded.");
-  }
-
-  private String getStringOfCustomObject(
-      CustomObject customObject) {
-    // Convert object to string
-    return gson.toJson(customObject);
   }
 
   private ByteArrayOutputStream getByteArrayOutputStream(
