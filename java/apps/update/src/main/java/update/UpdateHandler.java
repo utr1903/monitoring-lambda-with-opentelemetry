@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -39,6 +41,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
 
   private static String OUTPUT_S3_BUCKET_NAME;
   private static String SQS_QUEUE_URL;
+  private static final String SQS_MESSAGE_GROUP_ID = "otel";
 
   private Gson gson = new Gson();
 
@@ -74,17 +77,20 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
         return null;
       }
 
+      // Get the record
+      S3EventNotificationRecord record = input.getRecords().get(0);
+
       // Create the custom object from input bucket
-      String customObjectAsString = getCustomObjectFromInputS3(input);
+      String customObjectAsString = getCustomObjectFromInputS3(record);
 
       // Update custom object
       String customObjectUpdatedAsString = updateCustomObject(customObjectAsString);
 
       // Store the custom object in S3
-      storeCustomObjectInOutputS3(customObjectUpdatedAsString);
+      storeCustomObjectInOutputS3(record.getS3().getObject().getKey(), customObjectUpdatedAsString);
 
       // Send custom object to SQS
-      sendCustomObjectToSqs(customObjectAsString);
+      sendCustomObjectS3InfoToSqs(record);
 
       logger.log("Updating custom object is succeeded.");
       return null;
@@ -102,12 +108,11 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
   }
 
   private String getCustomObjectFromInputS3(
-      S3Event input) {
+      S3EventNotificationRecord record) {
 
-    logger.log("Getting custom object...");
+    logger.log("Getting custom object from the input S3...");
 
     // Get bucket name and object key
-    S3EventNotificationRecord record = input.getRecords().get(0);
     String bucket = record.getS3().getBucket().getName();
     String key = record.getS3().getObject().getKey();
 
@@ -122,7 +127,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
     ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
     byte[] customObjectAsBytes = responseBytes.asByteArray();
 
-    logger.log("Getting custom object is succedeed.");
+    logger.log("Getting custom object from the input S3 is succedeed.");
 
     // Parse as string and return
     return new String(customObjectAsBytes, StandardCharsets.UTF_8);
@@ -137,9 +142,10 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
   }
 
   private void storeCustomObjectInOutputS3(
+      String key,
       String customObjectString) {
 
-    logger.log("Updating custom object...");
+    logger.log("Updating custom object in output S3...");
 
     // Get byte array stream of string
     ByteArrayOutputStream jsonByteStream = getByteArrayOutputStream(customObjectString);
@@ -152,7 +158,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
         PutObjectRequest
             .builder()
             .bucket(OUTPUT_S3_BUCKET_NAME)
-            .key(String.valueOf(System.currentTimeMillis()))
+            .key(String.valueOf(key))
             .build(),
         RequestBody.fromContentProvider(new ContentStreamProvider() {
           @Override
@@ -161,7 +167,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
           }
         }, jsonByteStream.toByteArray().length, "application/json"));
 
-    logger.log("Updating custom object is succedeed.");
+    logger.log("Updating custom object in output S3 is succedeed.");
   }
 
   private ByteArrayOutputStream getByteArrayOutputStream(
@@ -180,18 +186,28 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
     return byteArrayOutputStream;
   }
 
-  private void sendCustomObjectToSqs(
-      String customObjectUpdatedAsString) {
+  private void sendCustomObjectS3InfoToSqs(
+      S3EventNotificationRecord record) {
 
-    logger.log("Sending updated custom object...");
+    logger.log("Sending S3 info of the updated custom object to SQS...");
+
+    // Get bucket name and object key
+    String key = record.getS3().getObject().getKey();
+
+    Map<String, String> message = new HashMap<String, String>();
+    message.put("bucket", OUTPUT_S3_BUCKET_NAME);
+    message.put("key", key);
+
+    // Convert to string
+    String json = gson.toJson(message);
 
     // Send updated custom object to SQS queue
     SendMessageRequest req = new SendMessageRequest()
-        .withMessageGroupId("otel")
+        .withMessageGroupId(SQS_MESSAGE_GROUP_ID)
         .withQueueUrl(SQS_QUEUE_URL)
-        .withMessageBody(customObjectUpdatedAsString);
+        .withMessageBody(json);
     sqs.sendMessage(req);
 
-    logger.log("Sending updated custom object is succeeded.");
+    logger.log("Sending S3 info of the updated custom object to SQS is succeeded.");
   }
 }
