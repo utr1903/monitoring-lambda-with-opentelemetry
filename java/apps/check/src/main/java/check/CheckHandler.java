@@ -97,6 +97,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     logger.log("Parsing env vars is succeeded.");
   }
 
+  @SuppressWarnings("unchecked")
   private Map<String, String> parseSqsMessage(
       SQSEvent input) {
 
