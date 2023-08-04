@@ -37,7 +37,7 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
   private LambdaLogger logger;
 
   private static String INPUT_S3_BUCKET_NAME;
-  private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateError";
+  private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateEvent";
 
   private final static S3Client s3Client;
   private Gson gson = new Gson();
@@ -71,19 +71,15 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
       // Store the custom object in S3
       storeObjectInS3(json);
 
+      // Enrich span with success
+      enrichSpanWithSuccess(context);
+
       return createResponse(200, json);
     } catch (Exception e) {
       logger.log("Storing custom object into S3 is failed! Exception: " + e);
 
-      Span span = Span.current();
-      span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
-      span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, e.getMessage());
-
-      Attributes eventAttributes = Attributes.of(
-          AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
-          AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
-
-      span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+      // Enrich span with success
+      enrichSpanWithFailure(context, e);
 
       return createResponse(500, e.getMessage());
     }
@@ -162,5 +158,34 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
     return response
         .withStatusCode(statusCode)
         .withBody(body);
+  }
+
+  private void enrichSpanWithSuccess(
+      Context context) {
+
+    Span span = Span.current();
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), true,
+        AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private void enrichSpanWithFailure(
+      Context context,
+      Exception e) {
+
+    Span span = Span.current();
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, e.getMessage());
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), false,
+        AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
   }
 }
