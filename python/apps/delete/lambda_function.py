@@ -11,7 +11,7 @@ if logger.handlers:
         logger.removeHandler(handler)
 logging.basicConfig(level=logging.INFO)
 
-s3 = boto3.resource('s3')
+client_s3 = boto3.resource('s3')
 
 INPUT_S3_BUCKET_NAME = os.getenv('INPUT_S3_BUCKET_NAME')
 OUTPUT_S3_BUCKET_NAME = os.getenv('OUTPUT_S3_BUCKET_NAME')
@@ -20,7 +20,7 @@ def lambda_handler (event, context):
 
   logger.info('Deleting all objects in input bucket...')
 
-  inputBucket = s3.Bucket(INPUT_S3_BUCKET_NAME)
+  inputBucket = client_s3.Bucket(INPUT_S3_BUCKET_NAME)
   inputBucket.objects.all().delete()
 
   logger.info('All objects in input bucket are deleted.')

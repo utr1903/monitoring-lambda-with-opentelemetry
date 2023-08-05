@@ -21,7 +21,7 @@ if logger.handlers:
         logger.removeHandler(handler)
 logging.basicConfig(level=logging.INFO)
 
-client = boto3.client('s3')
+client_s3 = boto3.client('s3')
 
 random.seed(datetime.now().timestamp())
 
@@ -51,7 +51,7 @@ def store_custom_object_in_s3(
         bucket_name = 'wrong-bucket-name'
 
     try:
-        client.put_object(
+        client_s3.put_object(
             Bucket=bucket_name,
             Key=f'{datetime.now().timestamp()}',
             Body=json.dumps(body),
