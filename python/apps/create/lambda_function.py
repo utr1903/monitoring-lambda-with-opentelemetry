@@ -36,7 +36,7 @@ def create_custom_object():
     }
 
 
-def causeError():
+def cause_error():
     n = random.randint(0, 15)
     return n == 1
 
@@ -47,7 +47,7 @@ def store_custom_object_in_s3(
     logger.info('Storing custom object into S3...')
 
     bucket_name = f'{INPUT_S3_BUCKET_NAME}'
-    if causeError():
+    if cause_error():
         bucket_name = 'wrong-bucket-name'
 
     try:
