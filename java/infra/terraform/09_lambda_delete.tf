@@ -36,8 +36,9 @@ resource "aws_iam_role_policy_attachment" "lambda_delete_logging" {
 
 # Lambda layer for collector config
 resource "aws_lambda_layer_version" "delete_collector_config" {
-  filename   = local.lambda_delete_collector_config_zip_path
-  layer_name = "delete_collector_config"
+  filename         = local.lambda_delete_collector_config_zip_path
+  layer_name       = "delete_collector_config"
+  source_code_hash = filebase64sha256(local.lambda_delete_collector_config_zip_path)
 }
 
 # Lambda function
@@ -63,6 +64,8 @@ resource "aws_lambda_function" "delete" {
     variables = {
       AWS_LAMBDA_EXEC_WRAPPER             = "/opt/otel-handler"
       OPENTELEMETRY_COLLECTOR_CONFIG_FILE = "/opt/collector.yaml"
+      OTEL_EXPORTER_OTLP_ENDPOINT         = "http://localhost:4317"
+      OTEL_METRICS_EXPORTER               = "otlp"
       NEWRELIC_OTLP_ENDPOINT              = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
       NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
       INPUT_S3_BUCKET_NAME                = aws_s3_bucket.input.id

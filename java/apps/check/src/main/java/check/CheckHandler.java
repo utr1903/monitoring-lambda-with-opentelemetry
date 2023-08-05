@@ -4,9 +4,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -16,6 +19,10 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent.SQSMessage;
 import com.google.gson.Gson;
 
 import check.daos.CustomObject;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -36,9 +43,10 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
 
   private LambdaLogger logger;
 
-  private static String OUTPUT_S3_BUCKET_NAME;
+  private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCheckEvent";
 
   private Gson gson = new Gson();
+  private Random random = new Random(System.currentTimeMillis());
 
   private final static S3Client s3Client;
 
@@ -59,44 +67,44 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
 
     logger = context.getLogger();
 
+    // Check if there are any records
+    if (input.getRecords().isEmpty()) {
+      logger.log("No records are found in S3 event.");
+      return null;
+    }
+
+    // Parse SQS message
+    Map<String, String> message = parseSqsMessage(input);
+    String bucketName = message.get("bucket");
+    String keyName = message.get("key");
+
     try {
-      // Parse environment variables
-      parseEnvVars();
-
-      // Check if there are any records
-      if (input.getRecords().isEmpty()) {
-        logger.log("No records are found in S3 event.");
-        return null;
-      }
-
-      // Parse SQS message
-      Map<String, String> message = parseSqsMessage(input);
 
       // Create the custom object from input bucket
-      String customObjectAsString = getCustomObjectFromInputS3(
-          message.get("bucket"),
-          message.get("key"));
+      String customObjectAsString = getCustomObjectFromS3(bucketName, keyName);
 
       // Update custom object
-      String customObjectUpdatedAsString = updateCustomObject(customObjectAsString);
+      String customObjectCheckedAsString = checkCustomObject(customObjectAsString);
 
       // Store the custom object in S3
-      storeCustomObjectInOutputS3(message.get("key"), customObjectUpdatedAsString);
+      storeCustomObjectInS3(bucketName, keyName, customObjectCheckedAsString);
 
-      logger.log("Updating custom object is succeeded.");
+      // Enrich span with success
+      enrichSpanWithSuccess(context, bucketName, keyName);
+
+      logger.log("Checking custom object is succeeded.");
       return null;
     } catch (Exception e) {
-      logger.log("Updating custom object is failed!: " + e);
+      logger.log("Checking custom object is failed!: " + e);
+
+      // Enrich span with failure
+      enrichSpanWithFailure(context, e, bucketName, keyName);
+
       return null;
     }
   }
 
-  private void parseEnvVars() {
-    logger.log("Parsing env vars...");
-    OUTPUT_S3_BUCKET_NAME = System.getenv("OUTPUT_S3_BUCKET_NAME");
-    logger.log("Parsing env vars is succeeded.");
-  }
-
+  @SuppressWarnings("unchecked")
   private Map<String, String> parseSqsMessage(
       SQSEvent input) {
 
@@ -114,31 +122,39 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     return message;
   }
 
-  private String getCustomObjectFromInputS3(
-      String bucket,
-      String key) {
+  private String getCustomObjectFromS3(
+      String bucketName,
+      String keyName) throws Exception {
 
-    logger.log("Getting custom object S3 info from the SQS message...");
+    logger.log("Getting custom object from the S3...");
 
-    GetObjectRequest getObjectRequest = null;
-    getObjectRequest = GetObjectRequest
-        .builder()
-        .bucket(bucket)
-        .key(key)
-        .build();
+    // Cause error?
+    if (causeError())
+      keyName = "wrong-key-name";
 
-    logger.log("Getting custom object S3 info from the SQS message is succeeded.");
-    // Get custom object as bytes
-    ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
-    byte[] customObjectAsBytes = responseBytes.asByteArray();
+    try {
+      GetObjectRequest getObjectRequest = GetObjectRequest
+          .builder()
+          .bucket(bucketName)
+          .key(keyName)
+          .build();
 
-    logger.log("Getting custom object is succedeed.");
+      // Get custom object as bytes
+      ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
+      byte[] customObjectAsBytes = responseBytes.asByteArray();
 
-    // Parse as string and return
-    return new String(customObjectAsBytes, StandardCharsets.UTF_8);
+      logger.log("Getting custom object from the S3 is succedeed.");
+
+      // Parse as string and return
+      return new String(customObjectAsBytes, StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      String msg = "Getting custom object from the S3 is failed.";
+      logger.log(msg);
+      throw new Exception(msg + ": " + e.getMessage());
+    }
   }
 
-  private String updateCustomObject(
+  private String checkCustomObject(
       String customObjectAsString) {
     CustomObject customObject = gson.fromJson(customObjectAsString, CustomObject.class);
     customObject.setIsChecked(true);
@@ -146,11 +162,12 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     return gson.toJson(customObject);
   }
 
-  private void storeCustomObjectInOutputS3(
-      String key,
+  private void storeCustomObjectInS3(
+      String bucketName,
+      String keyName,
       String customObjectString) {
 
-    logger.log("Updating custom object...");
+    logger.log("Checking custom object...");
 
     // Get byte array stream of string
     ByteArrayOutputStream jsonByteStream = getByteArrayOutputStream(customObjectString);
@@ -162,8 +179,8 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     s3Client.putObject(
         PutObjectRequest
             .builder()
-            .bucket(OUTPUT_S3_BUCKET_NAME)
-            .key(key)
+            .bucket(bucketName)
+            .key(keyName)
             .build(),
         RequestBody.fromContentProvider(new ContentStreamProvider() {
           @Override
@@ -172,7 +189,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
           }
         }, jsonByteStream.toByteArray().length, "application/json"));
 
-    logger.log("Updating custom object is succedeed.");
+    logger.log("Checking custom object is succedeed.");
   }
 
   private ByteArrayOutputStream getByteArrayOutputStream(
@@ -189,5 +206,57 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
       throw new RuntimeException("getByteArrayOutputStream failed", e);
     }
     return byteArrayOutputStream;
+  }
+
+  private boolean causeError() {
+    // Cause an error if the random number is 1
+    int n = random.nextInt(15);
+    return n == 1;
+  }
+
+  private void enrichSpanWithSuccess(
+      Context context,
+      String bucketName,
+      String keyName) {
+
+    Span span = Span.current();
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), true,
+        AttributeKey.stringKey("bucket.id"), bucketName,
+        AttributeKey.stringKey("key.name"), keyName,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private void enrichSpanWithFailure(
+      Context context,
+      Exception e,
+      String bucketName,
+      String keyName) {
+
+    Span span = Span.current();
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, "Check Lambda is failed.");
+    span.setAttribute(SemanticAttributes.EXCEPTION_TYPE, e.getClass().getCanonicalName());
+    span.setAttribute(SemanticAttributes.EXCEPTION_MESSAGE, e.getMessage());
+    span.setAttribute(SemanticAttributes.EXCEPTION_STACKTRACE, convertExceptionStackTraceToString(e));
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), false,
+        AttributeKey.stringKey("bucket.id"), bucketName,
+        AttributeKey.stringKey("key.name"), keyName,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private String convertExceptionStackTraceToString(
+      Exception e) {
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    e.printStackTrace(pw);
+    return sw.toString();
   }
 }

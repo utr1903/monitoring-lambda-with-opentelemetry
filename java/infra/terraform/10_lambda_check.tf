@@ -42,8 +42,9 @@ resource "aws_iam_role_policy_attachment" "lambda_check_logging" {
 
 # Lambda layer for collector config
 resource "aws_lambda_layer_version" "check_collector_config" {
-  filename   = local.lambda_check_collector_config_zip_path
-  layer_name = "check_collector_config"
+  filename         = local.lambda_check_collector_config_zip_path
+  layer_name       = "check_collector_config"
+  source_code_hash = filebase64sha256(local.lambda_check_collector_config_zip_path)
 }
 
 # Lambda function
@@ -67,11 +68,13 @@ resource "aws_lambda_function" "check" {
 
   environment {
     variables = {
-      AWS_LAMBDA_EXEC_WRAPPER             = "/opt/otel-handler"
+      AWS_LAMBDA_EXEC_WRAPPER             = "/opt/otel-sqs-handler"
       OPENTELEMETRY_COLLECTOR_CONFIG_FILE = "/opt/collector.yaml"
-      NEWRELIC_OTLP_ENDPOINT = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
-      NEWRELIC_LICENSE_KEY   = var.NEWRELIC_LICENSE_KEY
-      OUTPUT_S3_BUCKET_NAME  = aws_s3_bucket.output.id
+      OTEL_EXPORTER_OTLP_ENDPOINT         = "http://localhost:4317"
+      OTEL_METRICS_EXPORTER               = "otlp"
+      NEWRELIC_OTLP_ENDPOINT              = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
+      NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
+      OUTPUT_S3_BUCKET_NAME               = aws_s3_bucket.output.id
     }
   }
 

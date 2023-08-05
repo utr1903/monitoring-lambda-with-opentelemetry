@@ -4,8 +4,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -15,6 +18,10 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.Gson;
 
 import create.daos.CustomObject;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.ContentStreamProvider;
@@ -33,9 +40,11 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
   private LambdaLogger logger;
 
   private static String INPUT_S3_BUCKET_NAME;
+  private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateEvent";
 
   private final static S3Client s3Client;
   private Gson gson = new Gson();
+  private Random random = new Random(System.currentTimeMillis());
 
   static {
     final String region = System.getenv(SdkSystemSetting.AWS_REGION.environmentVariable());
@@ -66,9 +75,16 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
       // Store the custom object in S3
       storeObjectInS3(json);
 
+      // Enrich span with success
+      enrichSpanWithSuccess(context);
+
       return createResponse(200, json);
     } catch (Exception e) {
       logger.log("Storing custom object into S3 is failed! Exception: " + e);
+
+      // Enrich span with failure
+      enrichSpanWithFailure(context, e);
+
       return createResponse(500, e.getMessage());
     }
   }
@@ -86,8 +102,14 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
         false);
   }
 
+  private String getStringOfCustomObject(
+      CustomObject customObject) {
+    // Convert object to string
+    return gson.toJson(customObject);
+  }
+
   private void storeObjectInS3(
-      String customObjectString) {
+      String customObjectString) throws Exception {
 
     logger.log("Storing custom object into S3...");
 
@@ -97,27 +119,32 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
     // Prepare an InputStream from the ByteArrayOutputStream
     InputStream fis = new ByteArrayInputStream(jsonByteStream.toByteArray());
 
+    // Cause error?
+    String bucketName = String.valueOf(INPUT_S3_BUCKET_NAME);
+    if (causeError())
+      bucketName = "wrong-bucket-name";
+
     // Put file into S3
-    s3Client.putObject(
-        PutObjectRequest
-            .builder()
-            .bucket(INPUT_S3_BUCKET_NAME)
-            .key(String.valueOf(System.currentTimeMillis()))
-            .build(),
-        RequestBody.fromContentProvider(new ContentStreamProvider() {
-          @Override
-          public InputStream newStream() {
-            return fis;
-          }
-        }, jsonByteStream.toByteArray().length, "application/json"));
+    try {
+      s3Client.putObject(
+          PutObjectRequest
+              .builder()
+              .bucket(bucketName)
+              .key(String.valueOf(System.currentTimeMillis()))
+              .build(),
+          RequestBody.fromContentProvider(new ContentStreamProvider() {
+            @Override
+            public InputStream newStream() {
+              return fis;
+            }
+          }, jsonByteStream.toByteArray().length, "application/json"));
 
-    logger.log("Storing custom object into S3 is succeeded.");
-  }
-
-  private String getStringOfCustomObject(
-      CustomObject customObject) {
-    // Convert object to string
-    return gson.toJson(customObject);
+      logger.log("Storing custom object into S3 is succeeded.");
+    } catch (Exception e) {
+      String msg = "Storing custom object into S3 is failed";
+      logger.log(msg);
+      throw new Exception(msg + ": " + e.getMessage());
+    }
   }
 
   private ByteArrayOutputStream getByteArrayOutputStream(
@@ -136,6 +163,12 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
     return byteArrayOutputStream;
   }
 
+  private boolean causeError() {
+    // Cause an error if the random number is 1
+    int n = random.nextInt(15);
+    return n == 1;
+  }
+
   private APIGatewayProxyResponseEvent createResponse(
       int statusCode,
       String body) {
@@ -146,5 +179,45 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
     return response
         .withStatusCode(statusCode)
         .withBody(body);
+  }
+
+  private void enrichSpanWithSuccess(
+      Context context) {
+
+    Span span = Span.current();
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), true,
+        AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private void enrichSpanWithFailure(
+      Context context,
+      Exception e) {
+
+    Span span = Span.current();
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, "Create Lambda is failed.");
+    span.setAttribute(SemanticAttributes.EXCEPTION_TYPE, e.getClass().getCanonicalName());
+    span.setAttribute(SemanticAttributes.EXCEPTION_MESSAGE, e.getMessage());
+    span.setAttribute(SemanticAttributes.EXCEPTION_STACKTRACE, convertExceptionStackTraceToString(e));
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), false,
+        AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private String convertExceptionStackTraceToString(
+      Exception e) {
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    e.printStackTrace(pw);
+    return sw.toString();
   }
 }

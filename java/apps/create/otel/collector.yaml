@@ -2,7 +2,7 @@ receivers:
   otlp:
     protocols:
       grpc:
-      http:
+        endpoint: "localhost:4317"
 exporters:
   logging:
     loglevel: debug
@@ -13,5 +13,8 @@ exporters:
 service:
   pipelines:
     traces:
+      receivers: [otlp]
+      exporters: [otlp]
+    metrics:
       receivers: [otlp]
       exporters: [otlp]

@@ -1,11 +1,18 @@
 package delete;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
@@ -29,6 +36,9 @@ public class DeleteHandler {
   private LambdaLogger logger;
 
   private static String INPUT_S3_BUCKET_NAME;
+  private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaDeleteEvent";
+
+  private Random random = new Random(System.currentTimeMillis());
 
   private final static S3Client s3Client;
 
@@ -57,9 +67,16 @@ public class DeleteHandler {
       // Delete the custom objects in input bucket
       deleteAllCustomObjectsInInputS3(allCustomObjects);
 
+      // Enrich span with success
+      enrichSpanWithSuccess(context);
+
       return null;
     } catch (Exception e) {
       logger.log("Deleting custom objects in the input S3 is failed!: " + e);
+
+      // Enrich span with failure
+      enrichSpanWithFailure(context, e);
+
       return null;
     }
   }
@@ -70,32 +87,41 @@ public class DeleteHandler {
     logger.log("Parsing env vars is succeeded.");
   }
 
-  private List<S3Object> getAllCustomObjectsInInputS3() {
+  private List<S3Object> getAllCustomObjectsInInputS3() throws Exception {
 
     logger.log("Getting all custom objects in the input S3...");
 
-    // List all objects in the bucket
-    ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
-        .bucket(INPUT_S3_BUCKET_NAME)
-        .build();
+    String bucketName = String.valueOf(INPUT_S3_BUCKET_NAME);
+    if (causeError())
+      bucketName = "wrong-bucket-name";
 
-    List<S3Object> allCustomObjects = new ArrayList<>();
-    ListObjectsV2Response listResponse;
-
-    do {
-      listResponse = s3Client.listObjectsV2(listRequest);
-      allCustomObjects.addAll(listResponse.contents());
-
-      listRequest = ListObjectsV2Request.builder()
-          .bucket(INPUT_S3_BUCKET_NAME)
-          .continuationToken(listResponse.nextContinuationToken())
+    try {
+      // List all objects in the bucket
+      ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+          .bucket(bucketName)
           .build();
 
-    } while (listResponse.isTruncated());
+      List<S3Object> allCustomObjects = new ArrayList<>();
+      ListObjectsV2Response listResponse;
 
-    logger.log("Getting all custom objects in the input S3 is succeeded.");
+      do {
+        listResponse = s3Client.listObjectsV2(listRequest);
+        allCustomObjects.addAll(listResponse.contents());
 
-    return allCustomObjects;
+        listRequest = ListObjectsV2Request.builder()
+            .bucket(bucketName)
+            .continuationToken(listResponse.nextContinuationToken())
+            .build();
+
+      } while (listResponse.isTruncated());
+
+      logger.log("Getting all custom objects in the input S3 is succeeded.");
+      return allCustomObjects;
+    } catch (Exception e) {
+      String msg = "Getting all custom objects in the input S3 is failed";
+      logger.log(msg);
+      throw new Exception(msg + ": " + e.getMessage());
+    }
   }
 
   private void deleteAllCustomObjectsInInputS3(
@@ -127,5 +153,51 @@ public class DeleteHandler {
     }
 
     logger.log("Deleting custom objects in the input S3 is succeeded.");
+  }
+
+  private boolean causeError() {
+    // Cause an error if the random number is 1
+    int n = random.nextInt(3);
+    return n == 1;
+  }
+
+  private void enrichSpanWithSuccess(
+      Context context) {
+
+    Span span = Span.current();
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), true,
+        AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private void enrichSpanWithFailure(
+      Context context,
+      Exception e) {
+
+    Span span = Span.current();
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
+    span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, "Delete Lambda is failed.");
+    span.setAttribute(SemanticAttributes.EXCEPTION_TYPE, e.getClass().getCanonicalName());
+    span.setAttribute(SemanticAttributes.EXCEPTION_MESSAGE, e.getMessage());
+    span.setAttribute(SemanticAttributes.EXCEPTION_STACKTRACE, convertExceptionStackTraceToString(e));
+
+    Attributes eventAttributes = Attributes.of(
+        AttributeKey.booleanKey("is.successful"), false,
+        AttributeKey.stringKey("bucket.id"), INPUT_S3_BUCKET_NAME,
+        AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
+
+    span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
+  }
+
+  private String convertExceptionStackTraceToString(
+      Exception e) {
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    e.printStackTrace(pw);
+    return sw.toString();
   }
 }
