@@ -21,6 +21,9 @@ done
 
 if [[ $flagDestroy != "true" ]]; then
 
+  # Install packages
+  pip3 install -r "../../apps/create/requirements.txt" --target ../../apps/create/python
+
   # Initialize Terraform
   terraform -chdir=../terraform init
 
