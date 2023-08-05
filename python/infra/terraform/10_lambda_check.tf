@@ -54,7 +54,7 @@ resource "aws_lambda_function" "check" {
   timeout = 10
 
   layers = [
-    "arn:aws:lambda:${var.AWS_REGION}:901920570463:layer:aws-otel-python-amd64-ver-1-14-0:1"
+    "arn:aws:lambda:${var.AWS_REGION}:901920570463:layer:aws-otel-python-amd64-ver-1-19-0:1"
   ]
 
   environment {
@@ -63,7 +63,7 @@ resource "aws_lambda_function" "check" {
       OPENTELEMETRY_COLLECTOR_CONFIG_FILE = "/var/task/otel/collector.yaml"
       NEWRELIC_OTLP_ENDPOINT              = substr(var.NEWRELIC_LICENSE_KEY, 0, 2) == "eu" ? "otlp.eu01.nr-data.net:4317" : "otlp.nr-data.net:4317"
       NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
-      OUTPUT_S3_BUCKET_NAME                = aws_s3_bucket.output.id
+      OUTPUT_S3_BUCKET_NAME               = aws_s3_bucket.output.id
     }
   }
 
