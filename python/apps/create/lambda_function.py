@@ -86,7 +86,7 @@ def enrich_span_with_failure(
     span = trace.get_current_span()
 
     span.set_attribute('otel.status_code', 'ERROR')
-    span.set_attribute('otel.status_description', 'Create Lambda is failed.')
+    span.set_attribute('otel.status_description', 'Delete Lambda is failed.')
     span.set_attribute(SpanAttributes.EXCEPTION_TYPE, str(type(e)))
     span.set_attribute(SpanAttributes.EXCEPTION_MESSAGE, str(e))
     span.set_attribute(SpanAttributes.EXCEPTION_STACKTRACE,
