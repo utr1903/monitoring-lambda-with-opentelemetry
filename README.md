@@ -48,7 +48,7 @@ The `check` Lambda consumes the messages published to the SQS and thereby the me
 
 - parses the `bucket` and `key` from the message
 - gets the custom object from that bucket
-- marks it checked as follows:
+- marks it checked by setting the field `isChecked` to true as follows:
   - ```json
     {
       "item": "test",
@@ -72,7 +72,7 @@ The instrumentation of each service in each programming language consist of auto
 - The Lambdas are wrapped with Open Telemetry auto-instrumentation layers which instruments the inbound & outbound calls to/from your applications.
 - In order to track custom KPIs, the manual instrumentation comes into play. For example, creating custom span events or adding additional attributes to some spans.
 
-The generated telemetry data within the Lambda is then flushed to an Open Telemetry collector which is mounted to the Lambda either az zip package or a layer (see code). The collector is then responsible to forward the telemetry data to your backend of choice!
+The generated telemetry data within the Lambda is then flushed to an Open Telemetry collector which is mounted to the Lambda either as a zip package or a layer (see code). The collector is then responsible to forward the telemetry data to your backend of choice!
 
 **REMARK:** Currently the code is designed to send data to [New Relic](https://newrelic.com/) by default. Feel free to change the OTel collector config and Terraform Lambda environment variables to send data to elsewhere.
 
@@ -82,9 +82,9 @@ As prerequisites, you need
 
 - Terraform (required)
 - Configured AWS CLI (required)
-- Go SDK (only required for Golang)
-- Maven 3 (only required for Java)
-- Java 11 SDK (only required for Java)
+- Go >1.18 SDK (only required for Golang)
+- Maven >3 (only required for Java)
+- Java >11 SDK (only required for Java)
 
 Currently, every programming language has its own environment:
 
