@@ -9,7 +9,6 @@ import traceback
 
 from datetime import datetime
 from python.opentelemetry import trace
-from python.opentelemetry.util import types
 from python.opentelemetry.semconv.trace import SpanAttributes
 
 CUSTOM_OTEL_SPAN_EVENT_NAME = 'LambdaCreateEvent'
