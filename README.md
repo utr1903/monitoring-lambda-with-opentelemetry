@@ -151,3 +151,8 @@ In every cell:
 ### Java
 
 - The `update` Lambda cannot be instrumented currently because of the [bug](https://github.com/open-telemetry/opentelemetry-lambda/issues/640).
+
+## TODOs
+
+- Send metrics
+- Send logs (in context with traces)
