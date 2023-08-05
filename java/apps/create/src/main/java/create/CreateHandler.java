@@ -82,7 +82,7 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
     } catch (Exception e) {
       logger.log("Storing custom object into S3 is failed! Exception: " + e);
 
-      // Enrich span with success
+      // Enrich span with failure
       enrichSpanWithFailure(context, e);
 
       return createResponse(500, e.getMessage());
