@@ -23,6 +23,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateEvent"
+
 var (
 	OTEL_SERVICE_NAME    string
 	INPUT_S3_BUCKET_NAME string
@@ -101,11 +103,16 @@ func handler(
 	// Store object in S3
 	err = storeObjectInS3(ctx, parentSpan, jsonBody)
 	if err != nil {
-		fmt.Println("Putting object to S3 bucket has failed.")
 
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.HTTPStatusCode(500),
 		}...)
+
+		parentSpan.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
+			trace.WithAttributes(
+				attribute.Bool("is.successful", false),
+				attribute.String("bucket.id", INPUT_S3_BUCKET_NAME),
+			))
 
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
@@ -117,9 +124,15 @@ func handler(
 		semconv.HTTPStatusCode(200),
 	}...)
 
+	parentSpan.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
+		trace.WithAttributes(
+			attribute.Bool("is.successful", true),
+			attribute.String("bucket.id", INPUT_S3_BUCKET_NAME),
+		))
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
-		Body:       "Success",
+		Body:       string(jsonBody),
 	}, nil
 }
 
@@ -129,27 +142,35 @@ func storeObjectInS3(
 	jsonBody []byte,
 ) error {
 
+	fmt.Println("Storing custom object into S3...")
+
 	// Start S3 put span
 	ctx, s3PutSpan := startS3PutSpan(ctx, parentSpan)
 	defer s3PutSpan.End()
 
 	// Upload object to S3
-	now := strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)
 	_, err := uploader.UploadWithContext(
 		ctx,
 		&s3manager.UploadInput{
 			Bucket: aws.String(INPUT_S3_BUCKET_NAME),
-			Key:    aws.String(now),
+			Key:    aws.String(strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)),
 			Body:   bytes.NewReader(jsonBody),
 		})
 
 	if err != nil {
+		msg := "Storing custom object into S3 is failed."
+
 		s3PutSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
+			semconv.OtelStatusDescription(msg + ": " + err.Error()),
 		}...)
+
+		fmt.Println(msg)
+		return err
 	}
 
-	return err
+	fmt.Println("Storing custom object into S3 is succeeded.")
+	return nil
 }
 
 func startParentSpan(
