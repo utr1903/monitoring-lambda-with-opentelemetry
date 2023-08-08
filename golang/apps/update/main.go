@@ -46,7 +46,7 @@ func main() {
 
 	// Parse environment variables
 	OTEL_SERVICE_NAME = os.Getenv("OTEL_SERVICE_NAME")
-	OUTPUT_S3_BUCKET_NAME = os.Getenv("INPUT_S3_BUCKET_NAME")
+	OUTPUT_S3_BUCKET_NAME = os.Getenv("OUTPUT_S3_BUCKET_NAME")
 	SQS_QUEUE_URL = os.Getenv("SQS_QUEUE_URL")
 
 	// Create a s3 downloader & uploader
@@ -229,6 +229,8 @@ func updateCustomObject(
 		fmt.Println(msg + ": " + err.Error())
 		return nil, err
 	}
+
+	customObject.IsUpdated = true
 	return customObject, nil
 }
 
