@@ -140,7 +140,7 @@ In every cell:
 
 | Language | create   | update   | check    | delete   |
 | -------- | -------- | -------- | -------- | -------- |
-| Golang   | ✅ ✅ ❌ | ✅ ❌ ❌ | ❌ ❌ ❌ | ❌ ❌ ❌ |
+| Golang   | ✅ ✅ ✅ | ✅ ✅ ✅ | ❌ ❌ ❌ | ❌ ❌ ❌ |
 | Java     | ✅ ✅ ✅ | ✅ ❌ ❌ | ✅ ✅ ✅ | ✅ ✅ ✅ |
 | Python   | ✅ ✅ ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ |
 

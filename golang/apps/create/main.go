@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -23,7 +25,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	OTEL_STATUS_ERROR_DESCRIPTION = "Create Lambda is failed."
+	CUSTOM_OTEL_SPAN_EVENT_NAME   = "LambdaCreateEvent"
+)
+
 var (
+	randomizer           = rand.New(rand.NewSource(time.Now().UnixNano()))
 	OTEL_SERVICE_NAME    string
 	INPUT_S3_BUCKET_NAME string
 	uploader             *s3manager.Uploader
@@ -82,16 +90,15 @@ func handler(
 	defer parentSpan.End()
 
 	// Create object
-	body := &CustomObject{
+	customObject := &CustomObject{
 		Item:      "test",
 		IsUpdated: false,
 		IsChecked: false,
 	}
 
-	// Convert object to json bytes
-	jsonBody, err := json.Marshal(body)
+	// Convert updated custom object to bytes
+	customObjectAsBytes, err := convertCustomObjectIntoBytes(parentSpan, customObject)
 	if err != nil {
-		fmt.Println("Converting body into JSON has failed.")
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 			Body:       "Failed",
@@ -99,13 +106,14 @@ func handler(
 	}
 
 	// Store object in S3
-	err = storeObjectInS3(ctx, parentSpan, jsonBody)
+	err = storeObjectInS3(ctx, parentSpan, customObjectAsBytes)
 	if err != nil {
-		fmt.Println("Putting object to S3 bucket has failed.")
 
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.HTTPStatusCode(500),
 		}...)
+
+		enrichSpanWithEvent(parentSpan, false)
 
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
@@ -117,39 +125,12 @@ func handler(
 		semconv.HTTPStatusCode(200),
 	}...)
 
+	enrichSpanWithEvent(parentSpan, true)
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
-		Body:       "Success",
+		Body:       string(customObjectAsBytes),
 	}, nil
-}
-
-func storeObjectInS3(
-	ctx context.Context,
-	parentSpan trace.Span,
-	jsonBody []byte,
-) error {
-
-	// Start S3 put span
-	ctx, s3PutSpan := startS3PutSpan(ctx, parentSpan)
-	defer s3PutSpan.End()
-
-	// Upload object to S3
-	now := strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)
-	_, err := uploader.UploadWithContext(
-		ctx,
-		&s3manager.UploadInput{
-			Bucket: aws.String(INPUT_S3_BUCKET_NAME),
-			Key:    aws.String(now),
-			Body:   bytes.NewReader(jsonBody),
-		})
-
-	if err != nil {
-		s3PutSpan.SetAttributes([]attribute.KeyValue{
-			semconv.OtelStatusCodeError,
-		}...)
-	}
-
-	return err
 }
 
 func startParentSpan(
@@ -180,6 +161,77 @@ func startParentSpan(
 		}...))
 }
 
+func convertCustomObjectIntoBytes(
+	parentSpan trace.Span,
+	customObject *CustomObject,
+) (
+	[]byte,
+	error,
+) {
+	customObjectAsBytes, err := json.Marshal(customObject)
+	if err != nil {
+		msg := "Converting custom object into JSON bytes has failed."
+		fmt.Println(msg)
+
+		parentSpan.SetAttributes([]attribute.KeyValue{
+			semconv.OtelStatusCodeError,
+			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
+			semconv.ExceptionMessage(msg + ": " + err.Error()),
+		}...)
+
+		return nil, err
+	}
+	return customObjectAsBytes, nil
+}
+
+func storeObjectInS3(
+	ctx context.Context,
+	parentSpan trace.Span,
+	customObjectAsBytes []byte,
+) error {
+
+	fmt.Println("Storing custom object into S3...")
+
+	// Start S3 put span
+	ctx, s3PutSpan := startS3PutSpan(ctx, parentSpan)
+	defer s3PutSpan.End()
+
+	// Cause error?
+	bucketName := strings.Clone(INPUT_S3_BUCKET_NAME)
+	if causeError() {
+		bucketName = "wrong-bucket-name"
+	}
+
+	// Upload object to S3
+	_, err := uploader.UploadWithContext(
+		ctx,
+		&s3manager.UploadInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String(strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)),
+			Body:   bytes.NewReader(customObjectAsBytes),
+		})
+
+	if err != nil {
+		msg := "Storing custom object into S3 is failed."
+
+		s3PutSpan.SetAttributes([]attribute.KeyValue{
+			semconv.OtelStatusCodeError,
+			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
+			semconv.ExceptionMessage(msg + ": " + err.Error()),
+		}...)
+
+		fmt.Println(msg)
+		return err
+	}
+
+	fmt.Println("Storing custom object into S3 is succeeded.")
+	return nil
+}
+
+func causeError() bool {
+	return randomizer.Intn(15) == 1
+}
+
 func startS3PutSpan(
 	ctx context.Context,
 	parentSpan trace.Span,
@@ -194,4 +246,15 @@ func startS3PutSpan(
 			trace.WithAttributes([]attribute.KeyValue{
 				semconv.NetTransportTCP,
 			}...))
+}
+
+func enrichSpanWithEvent(
+	span trace.Span,
+	isSuccesful bool,
+) {
+	span.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
+		trace.WithAttributes(
+			attribute.Bool("is.successful", isSuccesful),
+			attribute.String("bucket.id", INPUT_S3_BUCKET_NAME),
+		))
 }
