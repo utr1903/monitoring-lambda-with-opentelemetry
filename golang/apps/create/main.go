@@ -87,16 +87,15 @@ func handler(
 	defer parentSpan.End()
 
 	// Create object
-	body := &CustomObject{
+	customObject := &CustomObject{
 		Item:      "test",
 		IsUpdated: false,
 		IsChecked: false,
 	}
 
-	// Convert object to json bytes
-	jsonBody, err := json.Marshal(body)
+	// Convert updated custom object to bytes
+	customObjectAsBytes, err := convertCustomObjectIntoBytes(parentSpan, customObject)
 	if err != nil {
-		fmt.Println("Converting body into JSON has failed.")
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 			Body:       "Failed",
@@ -104,18 +103,14 @@ func handler(
 	}
 
 	// Store object in S3
-	err = storeObjectInS3(ctx, parentSpan, jsonBody)
+	err = storeObjectInS3(ctx, parentSpan, customObjectAsBytes)
 	if err != nil {
 
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.HTTPStatusCode(500),
 		}...)
 
-		parentSpan.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
-			trace.WithAttributes(
-				attribute.Bool("is.successful", false),
-				attribute.String("bucket.id", INPUT_S3_BUCKET_NAME),
-			))
+		enrichSpanWithEvent(parentSpan, false)
 
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
@@ -127,15 +122,11 @@ func handler(
 		semconv.HTTPStatusCode(200),
 	}...)
 
-	parentSpan.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
-		trace.WithAttributes(
-			attribute.Bool("is.successful", true),
-			attribute.String("bucket.id", INPUT_S3_BUCKET_NAME),
-		))
+	enrichSpanWithEvent(parentSpan, true)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
-		Body:       string(jsonBody),
+		Body:       string(customObjectAsBytes),
 	}, nil
 }
 
@@ -165,6 +156,29 @@ func startParentSpan(
 			semconv.HTTPUserAgent(req.Headers["User-Agent"]),
 			semconv.NetHostName(req.Headers["Host"]),
 		}...))
+}
+
+func convertCustomObjectIntoBytes(
+	parentSpan trace.Span,
+	customObject *CustomObject,
+) (
+	[]byte,
+	error,
+) {
+	customObjectAsBytes, err := json.Marshal(customObject)
+	if err != nil {
+		msg := "Converting custom object into JSON bytes has failed."
+		fmt.Println(msg)
+
+		parentSpan.SetAttributes([]attribute.KeyValue{
+			semconv.OtelStatusCodeError,
+			semconv.OtelStatusDescription("Create Lambda is failed."),
+			semconv.ExceptionMessage(msg + ": " + err.Error()),
+		}...)
+
+		return nil, err
+	}
+	return customObjectAsBytes, nil
 }
 
 func storeObjectInS3(
@@ -199,7 +213,8 @@ func storeObjectInS3(
 
 		s3PutSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
-			semconv.OtelStatusDescription(msg + ": " + err.Error()),
+			semconv.OtelStatusDescription("Create Lambda is failed."),
+			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
 
 		fmt.Println(msg)
@@ -228,4 +243,15 @@ func startS3PutSpan(
 			trace.WithAttributes([]attribute.KeyValue{
 				semconv.NetTransportTCP,
 			}...))
+}
+
+func enrichSpanWithEvent(
+	span trace.Span,
+	isSuccesful bool,
+) {
+	span.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
+		trace.WithAttributes(
+			attribute.Bool("is.successful", isSuccesful),
+			attribute.String("bucket.id", INPUT_S3_BUCKET_NAME),
+		))
 }
