@@ -66,6 +66,7 @@ resource "aws_lambda_function" "update" {
       NEWRELIC_LICENSE_KEY                = var.NEWRELIC_LICENSE_KEY
       OUTPUT_S3_BUCKET_NAME               = aws_s3_bucket.output.id
       SQS_QUEUE_URL                       = aws_sqs_queue.queue.url
+      SQS_QUEUE_NAME                      = local.sqs_queue_name
     }
   }
 
