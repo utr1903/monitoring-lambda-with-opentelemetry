@@ -184,7 +184,7 @@ func convertCustomObjectIntoBytes(
 func storeObjectInS3(
 	ctx context.Context,
 	parentSpan trace.Span,
-	jsonBody []byte,
+	customObjectAsBytes []byte,
 ) error {
 
 	fmt.Println("Storing custom object into S3...")
@@ -205,7 +205,7 @@ func storeObjectInS3(
 		&s3manager.UploadInput{
 			Bucket: aws.String(bucketName),
 			Key:    aws.String(strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)),
-			Body:   bytes.NewReader(jsonBody),
+			Body:   bytes.NewReader(customObjectAsBytes),
 		})
 
 	if err != nil {
