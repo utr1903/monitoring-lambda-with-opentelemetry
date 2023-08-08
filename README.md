@@ -140,13 +140,13 @@ In every cell:
 
 | Language | create   | update   | check    | delete   |
 | -------- | -------- | -------- | -------- | -------- |
-| Golang   | ✅ ✅ ✅ | ✅ ✅ ✅ | ❌ ❌ ❌ | ❌ ❌ ❌ |
+| Golang   | ✅ ✅ ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ |
 | Java     | ✅ ✅ ✅ | ✅ ❌ ❌ | ✅ ✅ ✅ | ✅ ✅ ✅ |
 | Python   | ✅ ✅ ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ |
 
 ### Golang
 
-- The trace context propagation between `create` and `update` Lambdas fails to be established due to lack of SDK functionality.
+- The trace context propagation between Lambdas fails to be established due to lack of SDK functionality.
 
 ### Java
 
