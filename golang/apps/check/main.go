@@ -100,8 +100,6 @@ func handler(
 		}
 		bucketName := (*message)["bucket"]
 		keyName := (*message)["key"]
-		fmt.Println("Bucket: " + bucketName)
-		fmt.Println("Key: " + keyName)
 
 		// Get the object from S3
 		customObjectAsBytes, err := getObjectFromS3(ctx, parentSpan, bucketName, keyName)
