@@ -70,11 +70,12 @@ def store_custom_object_in_output_s3(
     try:
         logger.info('Updating custom object in the output S3...')
 
+        bucket_name = f'{OUTPUT_S3_BUCKET_NAME}'
         if cause_error():
-            key_name = 'wrong-key-name'
+            bucket_name = 'wrong-bucket-name'
 
         client_s3.put_object(
-            Bucket=OUTPUT_S3_BUCKET_NAME,
+            Bucket=bucket_name,
             Key=key_name,
             Body=json.dumps(custom_object),
         )
