@@ -25,7 +25,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateEvent"
+const (
+	OTEL_STATUS_ERROR_DESCRIPTION = "Create Lambda is failed."
+	CUSTOM_OTEL_SPAN_EVENT_NAME   = "LambdaCreateEvent"
+)
 
 var (
 	randomizer           = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -172,7 +175,7 @@ func convertCustomObjectIntoBytes(
 
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
-			semconv.OtelStatusDescription("Create Lambda is failed."),
+			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
 			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
 
@@ -213,7 +216,7 @@ func storeObjectInS3(
 
 		s3PutSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
-			semconv.OtelStatusDescription("Create Lambda is failed."),
+			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
 			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
 
