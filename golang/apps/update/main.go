@@ -413,7 +413,8 @@ func startSqsSendSpan(
 			trace.WithSpanKind(trace.SpanKindProducer),
 			trace.WithAttributes([]attribute.KeyValue{
 				semconv.NetTransportTCP,
-				semconv.MessagingSystem("aws.sqs"),
+				semconv.MessagingSystem("AmazonSQS"),
+				semconv.MessagingOperationPublish,
 				semconv.MessagingDestinationKindQueue,
 				semconv.MessagingDestinationName(SQS_QUEUE_NAME),
 				attribute.String("aws.queue_url", SQS_QUEUE_URL),
