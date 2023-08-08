@@ -20,7 +20,7 @@ done
 ### Build Go binaries
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/create -o ../../apps/create/bootstrap main.go
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/update -o ../../apps/update/bootstrap main.go
-# GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/delete -o ../../apps/delete/bootstrap main.go
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/delete -o ../../apps/delete/bootstrap main.go
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -C ../../apps/check -o ../../apps/check/bootstrap main.go
 
 if [[ $flagDestroy != "true" ]]; then
