@@ -96,32 +96,32 @@ func handler(
 		// Get the object from input S3
 		customObjectAsBytes, err := getObjectFromS3(ctx, parentSpan, record)
 		if err != nil {
+			enrichSpanWithEvent(parentSpan, false)
 			return
 		}
 
 		// Update custom object
 		customObject, err := updateCustomObject(parentSpan, customObjectAsBytes)
 		if err != nil {
+			enrichSpanWithEvent(parentSpan, false)
 			return
 		}
 
-		// Convert object to bytes
-		customObjectUpdatedAsBytes, err := json.Marshal(customObject)
+		// Convert updated custom object to bytes
+		customObjectUpdatedAsBytes, err := convertCustomObjectUpdatedIntoBytes(parentSpan, customObject)
 		if err != nil {
-			msg := "Converting custom object into JSON bytes has failed."
-			fmt.Println(msg)
-
-			parentSpan.SetAttributes([]attribute.KeyValue{
-				semconv.OtelStatusCodeError,
-				semconv.OtelStatusDescription("Update Lambda is failed."),
-				semconv.ExceptionMessage(msg + ": " + err.Error()),
-			}...)
-
+			enrichSpanWithEvent(parentSpan, false)
 			return
 		}
 
-		// Store the custom object in S3
+		// Store the custom object in output S3
 		storeCustomObjectInOutputS3(ctx, parentSpan, record, customObjectUpdatedAsBytes)
+		if err != nil {
+			enrichSpanWithEvent(parentSpan, false)
+			return
+		}
+
+		enrichSpanWithEvent(parentSpan, true)
 	}
 }
 
@@ -232,6 +232,29 @@ func updateCustomObject(
 	return customObject, nil
 }
 
+func convertCustomObjectUpdatedIntoBytes(
+	parentSpan trace.Span,
+	customObjectUpdated *CustomObject,
+) (
+	[]byte,
+	error,
+) {
+	customObjectUpdatedAsBytes, err := json.Marshal(customObjectUpdated)
+	if err != nil {
+		msg := "Converting custom object into JSON bytes has failed."
+		fmt.Println(msg)
+
+		parentSpan.SetAttributes([]attribute.KeyValue{
+			semconv.OtelStatusCodeError,
+			semconv.OtelStatusDescription("Update Lambda is failed."),
+			semconv.ExceptionMessage(msg + ": " + err.Error()),
+		}...)
+
+		return nil, err
+	}
+	return customObjectUpdatedAsBytes, nil
+}
+
 func storeCustomObjectInOutputS3(
 	ctx context.Context,
 	parentSpan trace.Span,
@@ -246,7 +269,7 @@ func storeCustomObjectInOutputS3(
 	defer s3PutSpan.End()
 
 	// Cause error?
-	bucketName := strings.Clone(record.S3.Bucket.Name)
+	bucketName := strings.Clone(OUTPUT_S3_BUCKET_NAME)
 	if causeError() {
 		bucketName = "wrong-bucket-name"
 	}
@@ -295,4 +318,14 @@ func startS3PutSpan(
 
 func causeError() bool {
 	return randomizer.Intn(15) == 1
+}
+
+func enrichSpanWithEvent(
+	span trace.Span,
+	isSuccesful bool,
+) {
+	span.AddEvent(CUSTOM_OTEL_SPAN_EVENT_NAME,
+		trace.WithAttributes(
+			attribute.Bool("is.successful", isSuccesful),
+		))
 }
