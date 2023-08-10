@@ -22,7 +22,7 @@ resource "aws_cloudwatch_log_group" "lambda_delete" {
 
 # IAM policy for Lambda logging
 resource "aws_iam_policy" "lambda_delete_logging" {
-  name        = "lambda_delete_logging"
+  name        = "golang_lambda_delete_logging"
   path        = "/"
   description = "IAM policy for logging from a lambda"
   policy      = data.aws_iam_policy_document.lambda_logging.json

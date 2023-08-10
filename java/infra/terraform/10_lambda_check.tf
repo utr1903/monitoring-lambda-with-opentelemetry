@@ -28,7 +28,7 @@ resource "aws_cloudwatch_log_group" "lambda_check" {
 
 # IAM policy for Lambda logging
 resource "aws_iam_policy" "lambda_check_logging" {
-  name        = "python_lambda_check_logging"
+  name        = "java_lambda_check_logging"
   path        = "/"
   description = "IAM policy for logging from a lambda"
   policy      = data.aws_iam_policy_document.lambda_logging.json

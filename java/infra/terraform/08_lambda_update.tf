@@ -28,7 +28,7 @@ resource "aws_cloudwatch_log_group" "lambda_update" {
 
 # IAM policy for Lambda logging
 resource "aws_iam_policy" "lambda_update_logging" {
-  name        = "lambda_update_logging"
+  name        = "java_lambda_update_logging"
   path        = "/"
   description = "IAM policy for logging from a lambda"
   policy      = data.aws_iam_policy_document.lambda_logging.json
