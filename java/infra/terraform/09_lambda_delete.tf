@@ -81,7 +81,7 @@ resource "aws_lambda_function" "delete" {
 
 # CloudWatch cronjob event
 resource "aws_cloudwatch_event_rule" "delete_cronjob" {
-  name                = "python-delete-cronjob-event-rule"
+  name                = "java-delete-cronjob-event-rule"
   schedule_expression = "rate(1 minute)"
 }
 

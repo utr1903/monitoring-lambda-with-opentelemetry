@@ -10,7 +10,7 @@ resource "aws_apigatewayv2_api" "apigw" {
 
 # Cloudwatch log group
 resource "aws_cloudwatch_log_group" "api_gateway" {
-  name              = "/aws/api_gateway_python/${aws_apigatewayv2_api.apigw.name}"
+  name              = "/aws/api_gateway_java/${aws_apigatewayv2_api.apigw.name}"
   retention_in_days = 7
 }
 
