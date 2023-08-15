@@ -1,8 +1,24 @@
-# Monitoring Lambda with Open Telemetry
+# Monitoring Lambda with OpenTelemetry
 
-This repo is dedicated to show how to instrument & monitor AWS Lambda functions written in different programming languages with Open Telemetry. In order to demonstrate different scenarios the following simple data processing environment is built:
+This repository contains all of the instructions and files you need to instrument & monitor AWS Lambda functions with OpenTelemetry across several common programming languages. 
+
+Throughout this lab, and across multiple scenarios you will use the basic data processing environment is built:
 
 ![Architecture](/docs/architecture.png)
+
+## Requirements
+
+- A free account with [New Relic](https://newrelic.com)
+
+
+## Getting Started
+
+1. From a new terminal window, clone this repository to your local machine using Git `git clone https://github.com/utr1903/monitoring-lambda-with-opentelemetry.git
+2. Navigate into your new workspace using `cd monitoring-lambda-with-opentelemetry`
+3. Move onto the first lab of this workshop
+
+- Lab 1: [Lab Name]()
+- Lab 2: [Lab Name]()
 
 ## Workflow
 
