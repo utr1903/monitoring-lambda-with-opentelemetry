@@ -13,7 +13,7 @@ Throughout this lab, and across multiple scenarios you will use the basic data p
 
 ## Getting Started
 
-1. From a new terminal window, clone this repository to your local machine using Git `git clone https://github.com/utr1903/monitoring-lambda-with-opentelemetry.git
+1. From a new terminal window, clone this repository to your local machine using Git `git clone https://github.com/utr1903/monitoring-lambda-with-opentelemetry.git`
 2. Navigate into your new workspace using `cd monitoring-lambda-with-opentelemetry`
 3. Move onto the first lab of this workshop
 
