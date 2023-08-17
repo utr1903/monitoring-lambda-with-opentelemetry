@@ -4,8 +4,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -239,9 +237,8 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     Span span = Span.current();
     span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
     span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, "Check Lambda is failed.");
-    span.setAttribute(SemanticAttributes.EXCEPTION_TYPE, e.getClass().getCanonicalName());
-    span.setAttribute(SemanticAttributes.EXCEPTION_MESSAGE, e.getMessage());
-    span.setAttribute(SemanticAttributes.EXCEPTION_STACKTRACE, convertExceptionStackTraceToString(e));
+
+    span.recordException(e, Attributes.of(SemanticAttributes.EXCEPTION_ESCAPED, true));
 
     Attributes eventAttributes = Attributes.of(
         AttributeKey.booleanKey("is.successful"), false,
@@ -250,13 +247,5 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
         AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
 
     span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
-  }
-
-  private String convertExceptionStackTraceToString(
-      Exception e) {
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter(sw);
-    e.printStackTrace(pw);
-    return sw.toString();
   }
 }
