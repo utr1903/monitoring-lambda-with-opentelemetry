@@ -124,10 +124,8 @@ def enrich_span_with_failure(
 
     span.set_attribute('otel.status_code', 'ERROR')
     span.set_attribute('otel.status_description', 'Check Lambda is failed.')
-    span.set_attribute(SpanAttributes.EXCEPTION_TYPE, str(type(e)))
-    span.set_attribute(SpanAttributes.EXCEPTION_MESSAGE, str(e))
-    span.set_attribute(SpanAttributes.EXCEPTION_STACKTRACE,
-                       traceback.format_exc())
+
+    span.record_exception(exception=e, escaped=True)
 
     span.add_event(
         CUSTOM_OTEL_SPAN_EVENT_NAME,
