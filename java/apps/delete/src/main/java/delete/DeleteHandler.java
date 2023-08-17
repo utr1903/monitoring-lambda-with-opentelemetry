@@ -1,7 +1,5 @@
 package delete;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -181,9 +179,8 @@ public class DeleteHandler {
     Span span = Span.current();
     span.setAttribute(SemanticAttributes.OTEL_STATUS_CODE, SemanticAttributes.OtelStatusCodeValues.ERROR);
     span.setAttribute(SemanticAttributes.OTEL_STATUS_DESCRIPTION, "Delete Lambda is failed.");
-    span.setAttribute(SemanticAttributes.EXCEPTION_TYPE, e.getClass().getCanonicalName());
-    span.setAttribute(SemanticAttributes.EXCEPTION_MESSAGE, e.getMessage());
-    span.setAttribute(SemanticAttributes.EXCEPTION_STACKTRACE, convertExceptionStackTraceToString(e));
+
+    span.recordException(e, Attributes.of(SemanticAttributes.EXCEPTION_ESCAPED, true));
 
     Attributes eventAttributes = Attributes.of(
         AttributeKey.booleanKey("is.successful"), false,
@@ -191,13 +188,5 @@ public class DeleteHandler {
         AttributeKey.stringKey("aws.request.id"), context.getAwsRequestId());
 
     span.addEvent(CUSTOM_OTEL_SPAN_EVENT_NAME, eventAttributes);
-  }
-
-  private String convertExceptionStackTraceToString(
-      Exception e) {
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter(sw);
-    e.printStackTrace(pw);
-    return sw.toString();
   }
 }

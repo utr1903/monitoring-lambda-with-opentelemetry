@@ -176,8 +176,11 @@ func convertCustomObjectIntoBytes(
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		parentSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		return nil, err
 	}
@@ -217,8 +220,11 @@ func storeObjectInS3(
 		s3PutSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		s3PutSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg)
 		return err

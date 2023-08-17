@@ -150,8 +150,11 @@ func deleteAllCustomObjectsInS3(
 		s3DeleteSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		s3DeleteSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg)
 		return err
