@@ -198,8 +198,11 @@ func getObjectFromS3(
 		s3GetSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		parentSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg)
 		return nil, err
@@ -241,8 +244,11 @@ func updateCustomObject(
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		parentSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg + ": " + err.Error())
 		return nil, err
@@ -267,8 +273,11 @@ func convertCustomObjectUpdatedIntoBytes(
 		parentSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		parentSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		return nil, err
 	}
@@ -309,8 +318,11 @@ func storeCustomObjectInOutputS3(
 		s3PutSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		s3PutSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg)
 		return err
@@ -366,8 +378,11 @@ func sendCustomObjectS3InfoToSqs(
 		sqsSendSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		sqsSendSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg)
 		return err
@@ -384,8 +399,11 @@ func sendCustomObjectS3InfoToSqs(
 		sqsSendSpan.SetAttributes([]attribute.KeyValue{
 			semconv.OtelStatusCodeError,
 			semconv.OtelStatusDescription(OTEL_STATUS_ERROR_DESCRIPTION),
-			semconv.ExceptionMessage(msg + ": " + err.Error()),
 		}...)
+
+		sqsSendSpan.RecordError(err, trace.WithAttributes(
+			semconv.ExceptionEscaped(true),
+		))
 
 		fmt.Println(msg)
 		return err
