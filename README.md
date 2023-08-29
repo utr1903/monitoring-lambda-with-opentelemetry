@@ -1,108 +1,50 @@
 # Monitoring Lambda with OpenTelemetry
 
-This repository contains all of the instructions and files you need to instrument & monitor AWS Lambda functions with OpenTelemetry across several common programming languages. 
+This repository contains all of the instructions and files you need to instrument & monitor an AWS Lambda function with OpenTelemetry across several common programming languages. 
 
-Throughout this lab, and across multiple scenarios you will use the basic data processing environment is built:
+## Prerequisites
+The following required software must be accessible from your command line:
+
+- Terraform (required)
+  - Check with `terraform --version`
+  - [Installation docs](https://developer.hashicorp.com/terraform/downloads)
+- Configured AWS CLI (required)
+  - Check with `aws --version`
+  - [Installation docs](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+  - [Configuration docs](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
+  - [Configuration video](https://www.youtube.com/watch?v=Rp-A84oh4G8)
+- Go `>1.18` SDK (only required for Golang)
+  - Check with `go version`
+  - [Installation docs](https://go.dev/doc/install)
+- Maven `>3.x` (only required for Java)
+  - Check with `mvn -v`
+  - [Download docs](https://maven.apache.org/download.cgi)
+  - [Installation docs](https://maven.apache.org/install.html)
+- Java `>11` SDK (only required for Java)
+  - Check with `java -version`
+  - [Installation docs (Amazon Coretto 17)](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/what-is-corretto-17.html)
+- Python `>3.10` (only required for Python)
+  - Check with `python3 --version`
+  - [Installation docs (3.11)](https://www.python.org/downloads/release/python-3110/)
+
+## Architecture
+
+In order to demonstrate different scenarios, a sample data processing environment has been build for this workshop. The structure of the environment can be seen in the inmage below:
 
 ![Architecture](/docs/architecture.png)
 
-## Requirements
+Refer to this [documentation](/docs/workflow.md) to learn more about what you will be deploying!
 
-- A free account with [New Relic](https://newrelic.com)
+## Getting started
 
+In a new terminal window, clone this repository and `cd` into it:
 
-## Getting Started
-
-1. From a new terminal window, clone this repository to your local machine using Git `git clone https://github.com/utr1903/monitoring-lambda-with-opentelemetry.git`
-2. Navigate into your new workspace using `cd monitoring-lambda-with-opentelemetry`
-3. Move onto the first lab of this workshop
-
-- Lab 1: [Lab Name]()
-- Lab 2: [Lab Name]()
-
-## Workflow
-
-### Create
-
-A simulator is invoking the `create` Lambda function per an API Gateway. This function is responsible for creating a custom object with the following properties:
-
-```json
-{
-  "item": "test",
-  "isUpdated": false,
-  "isChecked": false
-}
+```
+git clone https://github.com/utr1903/monitoring-lambda-with-opentelemetry
+cd monitoring-lambda-with-opentelemetry
 ```
 
-It will then store this custom object into the input S3 bucket.
-
-### Update
-
-When the `create` Lambda stores the custom object into the input S3 bucket, the `update` Lambda will be triggered which
-
-- gets the custom object from the input S3 bucket
-- updates the custom object field `isUpdated` to true
-  - ```json
-    {
-      "item": "test",
-      "isUpdated": true,
-      "isChecked": false
-    }
-    ```
-- stores the updated custom object into the output S3 bucket
-- sends the following message to SQS
-  - ```json
-    {
-      "bucket": $OUTPUT_S3_BUCKET_NAME,
-      "key": $UPDATED_CUSTOM_OBJECT_S3_KEY_NAME,
-    }
-    ```
-
-### Check
-
-The `check` Lambda consumes the messages published to the SQS and thereby the messages from the `update` Lambda where it
-
-- parses the `bucket` and `key` from the message
-- gets the custom object from that bucket
-- marks it checked by setting the field `isChecked` to true as follows:
-  - ```json
-    {
-      "item": "test",
-      "isUpdated": true,
-      "isChecked": true
-    }
-    ```
-- stores it back to the bucket
-
-### Delete
-
-The `delete` Lambda is independent from the rest of the Lambdas. It is a cron job which deletes all of the objects in the input S3 bucket every minute. It
-
-- gets all of the object info from the input S3 bucket
-- deletes all of the objects in the input S3 bucket
-
-## Instrumentation
-
-The instrumentation of each service in each programming language consist of auto and manual instrumentation.
-
-- The Lambdas are wrapped with Open Telemetry auto-instrumentation layers which instruments the inbound & outbound calls to/from your applications.
-- In order to track custom KPIs, the manual instrumentation comes into play. For example, creating custom span events or adding additional attributes to some spans.
-
-The generated telemetry data within the Lambda is then flushed to an Open Telemetry collector which is mounted to the Lambda either as a zip package or a layer (see code). The collector is then responsible to forward the telemetry data to your backend of choice!
-
-**REMARK:** Currently the code is designed to send data to [New Relic](https://newrelic.com/) by default. Feel free to change the OTel collector config and Terraform Lambda environment variables to send data to elsewhere.
-
-## Deployment
-
-As prerequisites, you need
-
-- Terraform (required)
-- Configured AWS CLI (required)
-- Go >1.18 SDK (only required for Golang)
-- Maven >3 (only required for Java)
-- Java >11 SDK (only required for Java)
-
-Currently, every programming language has its own environment:
+Currently, every programming language in this repo has its own environment:
 
 - [Golang](/golang/)
 - [Java](/java/)
@@ -120,19 +62,35 @@ The folder structure of each language is the same:
   - scripts
   - terraform
 ```
+<details>
+ <summary><strong>Account Setup</strong></summary>
 
-First, set the following environment variables:
+In this step, you will associate your [AWS region](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html) and [New Relic license key](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#license-key) to the application so that telemetry data will be sent to your New Relic account. If you don't already have a New Relic account, set one up for free [here](https://newrelic.com/signup)
 
-- `AWS_REGION`
-- `NEWRELIC_LICENSE_KEY`
+Next, set the environment variables with the following CLI commands:
 
-Next to deploy everything, switch to the `{language}/infra/scripts` directory and simply run:
+```bash
+export AWS_REGION="XXX" # example: eu-west-1
+export NEWRELIC_LICENSE_KEY="XXX"
+```
+</details>
+
+<details>
+ <summary><strong>Deploy AWS Resources</strong></summary>
+
+Now we will deploy the AWS resources using a preconfigured Terraform script in the Golang directory.
+
+1. Switch to the `{language}/infra/scripts` directory using the command below:
+
+```bash
+cd golang/infra/scripts
+```
+
+Next, run the `00_deploy_aws_resources.sh` script:
 
 ```bash
 bash 00_deploy_aws_resources.sh
 ```
-
-**REMARK:** To deploy the Python environment, you do not need to have the Python runtime installed in your machine. However for Golang and Java, you do need necessary SDKs (see prerequisites).
 
 After the Terraform deployment is complete, the public URL of the API Gateway will be prompted to your terminal. You can generate some traffic by triggering it with the following `one-line curl loop`:
 
@@ -146,9 +104,31 @@ Example:
 while true; do; curl -X POST "https://mmzght1j5l.execute-api.eu-west-1.amazonaws.com/prod/create"; sleep 1; done
 ```
 
+At this point, you have deployed and instrumented the Golang service. To view this data in New Relic immediately run the following query in your account:
+
+```bash
+SELECT * FROM Span WHERE instrumentation.provider = 'opentelemetry'
+```
+After 5 minutes have passed since running the terraform script, navigate to **All Entities** in the New Relic platform and locate the service named `goland-lambda-delete-otel`
+
+</details>
+ 
+## Instrumentation
+
+The full instrumentation of each service in each programming language contains components of auto and manual instrumentation.
+
+- The Lambda functions included in this environment are wrapped with OpenTelemetry auto-instrumentation layers which instruments the inbound & outbound calls to/from your services.
+- In order to track custom KPIs, additional instrumentation (known as manual instrumentation) is needed. For example, creating custom span events or adding additional attributes to individual spans.
+
+The telemetry data generated within the Lambda function is then sent to an OpenTelemetry collector which is mounted to the Lambda either as a zip package or a layer (see code). The collector is then responsible to forward the telemetry data to your backend of choice!
+
+**REMARK:** Currently this repo is designed to send data to [New Relic](https://newrelic.com/) by default. However, it is possible to make small edits to the OTel collector config and Terraform Lambda environment variables to send data to elsewhere.
+
 ## Capability Matrix
 
-In every cell:
+The table below visualizes the level of instrumentation required for each service.
+
+In each cell:
 
 - 1st mark is for the implementation of the code
 - 2nd mark is for the implementation of the auto-instrumentation
@@ -166,9 +146,10 @@ In every cell:
 
 ### Java
 
-- The `update` Lambda cannot be instrumented currently because of the [bug](https://github.com/open-telemetry/opentelemetry-lambda/issues/640).
+- The `update` Lambda cannot be auto-instrumented currently because of the [bug](https://github.com/open-telemetry/opentelemetry-lambda/issues/640).
 
 ## TODOs
 
+- Propagate trace context
 - Send metrics
 - Send logs (in context with traces)
