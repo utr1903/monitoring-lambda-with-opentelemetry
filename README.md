@@ -67,7 +67,7 @@ The folder structure of each language is the same:
 
 In this step, you will associate your [AWS region](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html) and [New Relic license key](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#license-key) to the application so that telemetry data will be sent to your New Relic account. If you don't already have a New Relic account, set one up for free [here](https://newrelic.com/signup)
 
-Next, set the environment variables with the following CLI commands:
+Once you have your region and license key, set the environment variables with the following CLI commands:
 
 ```bash
 export AWS_REGION="XXX" # example: eu-west-1
@@ -86,13 +86,13 @@ Now we will deploy the AWS resources using a preconfigured Terraform script in t
 cd golang/infra/scripts
 ```
 
-Next, run the `00_deploy_aws_resources.sh` script:
+2. run the `00_deploy_aws_resources.sh` script:
 
 ```bash
 bash 00_deploy_aws_resources.sh
 ```
 
-After the Terraform deployment is complete, the public URL of the API Gateway will be prompted to your terminal. You can generate some traffic by triggering it with the following `one-line curl loop`:
+3. After the Terraform deployment is complete, the public URL of the API Gateway will be prompted to your terminal. You can generate some traffic by triggering it with the following `one-line curl loop`:
 
 ```bash
 while true; do; curl -X POST "${API_GATEWAY_PUBLIC_URL}/create"; sleep 1; done
@@ -104,12 +104,12 @@ Example:
 while true; do; curl -X POST "https://mmzght1j5l.execute-api.eu-west-1.amazonaws.com/prod/create"; sleep 1; done
 ```
 
-At this point, you have deployed and instrumented the Golang service. To view this data in New Relic immediately run the following query in your account:
+4. At this point, you have deployed and instrumented the Golang service. To view this data in New Relic immediately run the following query in your account:
 
 ```bash
 SELECT * FROM Span WHERE instrumentation.provider = 'opentelemetry'
 ```
-After 5 minutes have passed since running the terraform script, navigate to **All Entities** in the New Relic platform and locate the service named `goland-lambda-delete-otel`
+After 5 minutes have passed since running the terraform script, navigate to **All Entities** in the New Relic platform and locate the service(s) named `golang-lambda-***-otel`
 
 </details>
 
@@ -117,12 +117,12 @@ After 5 minutes have passed since running the terraform script, navigate to **Al
 
 The full instrumentation of each service in each programming language contains components of auto and manual instrumentation.
 
-- The Lambda functions included in this environment are wrapped with OpenTelemetry auto-instrumentation layers which instruments the inbound & outbound calls to/from your services.
+- The Lambda functions included in this environment are wrapped with OpenTelemetry auto-instrumentation layers which instrument the inbound & outbound calls to/from your services.
 - In order to track custom KPIs, additional instrumentation (known as manual instrumentation) is needed. For example, creating custom span events or adding additional attributes to individual spans.
 
-The telemetry data generated within the Lambda function is then sent to an OpenTelemetry collector which is mounted to the Lambda either as a zip package or a layer (see code). The collector is then responsible to forward the telemetry data to your backend of choice!
+The telemetry data generated within the Lambda function is then sent to an OpenTelemetry collector which is mounted to the Lambda function either as a zip package or a layer (see code). The collector is then responsible for forwarding the telemetry data to your backend of choice!
 
-**REMARK:** Currently this repo is designed to send data to [New Relic](https://newrelic.com/) by default. However, it is possible to make small edits to the OTel collector config and Terraform Lambda environment variables to send data to elsewhere.
+**REMARK:** Currently this repo is designed to send data to [New Relic](https://newrelic.com/) by default. However, it is possible to make small edits to the OTel collector config and Terraform Lambda environment variables to send data elsewhere.
 
 ## Capability Matrix
 
@@ -142,7 +142,7 @@ In each cell:
 
 ### Golang
 
-- The trace context propagation between Lambdas fails to be established due to lack of SDK functionality.
+- The trace context propagation between Lambdas fails to be established due to a lack of SDK functionality.
 
 ### Java
 
