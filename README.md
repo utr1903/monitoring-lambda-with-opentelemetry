@@ -112,7 +112,8 @@ SELECT * FROM Span WHERE instrumentation.provider = 'opentelemetry'
 After 5 minutes have passed since running the terraform script, navigate to **All Entities** in the New Relic platform and locate the service named `goland-lambda-delete-otel`
 
 </details>
-## Full Instrumentation
+
+## Complete Instrumentation
 
 The full instrumentation of each service in each programming language contains components of auto and manual instrumentation.
 
