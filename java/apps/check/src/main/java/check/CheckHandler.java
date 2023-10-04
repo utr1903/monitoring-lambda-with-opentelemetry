@@ -9,8 +9,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent.SQSMessage;
@@ -39,7 +41,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     System.setProperty("jdk.tls.client.protocols", "TLSv1.2");
   }
 
-  private LambdaLogger logger;
+  private static final Logger logger = LoggerFactory.getLogger(CheckHandler.class);
 
   private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCheckEvent";
 
@@ -63,11 +65,9 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
       SQSEvent input,
       Context context) {
 
-    logger = context.getLogger();
-
     // Check if there are any records
     if (input.getRecords().isEmpty()) {
-      logger.log("No records are found in S3 event.");
+      logger.info("No records are found in S3 event.");
       return null;
     }
 
@@ -90,10 +90,10 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
       // Enrich span with success
       enrichSpanWithSuccess(context, bucketName, keyName);
 
-      logger.log("Checking custom object is succeeded.");
+      logger.info("Checking custom object is succeeded.");
       return null;
     } catch (Exception e) {
-      logger.log("Checking custom object is failed!: " + e);
+      logger.error("Checking custom object is failed!: " + e);
 
       // Enrich span with failure
       enrichSpanWithFailure(context, e, bucketName, keyName);
@@ -106,7 +106,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
   private Map<String, String> parseSqsMessage(
       SQSEvent input) {
 
-    logger.log("Parsing SQS message...");
+    logger.info("Parsing SQS message...");
 
     // Get bucket name and object key
     SQSMessage record = input.getRecords().get(0);
@@ -116,7 +116,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
     Map<String, String> message = new HashMap<String, String>();
     message = gson.fromJson(messageAsString, message.getClass());
 
-    logger.log("Parsing SQS message is succeeded.");
+    logger.info("Parsing SQS message is succeeded.");
     return message;
   }
 
@@ -124,7 +124,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
       String bucketName,
       String keyName) throws Exception {
 
-    logger.log("Getting custom object from the S3...");
+    logger.info("Getting custom object from the S3...");
 
     // Cause error?
     if (causeError())
@@ -141,13 +141,13 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
       ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
       byte[] customObjectAsBytes = responseBytes.asByteArray();
 
-      logger.log("Getting custom object from the S3 is succedeed.");
+      logger.info("Getting custom object from the S3 is succedeed.");
 
       // Parse as string and return
       return new String(customObjectAsBytes, StandardCharsets.UTF_8);
     } catch (Exception e) {
       String msg = "Getting custom object from the S3 is failed.";
-      logger.log(msg);
+      logger.error(msg);
       throw new Exception(msg + ": " + e.getMessage());
     }
   }
@@ -165,7 +165,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
       String keyName,
       String customObjectString) {
 
-    logger.log("Checking custom object...");
+    logger.info("Checking custom object...");
 
     // Get byte array stream of string
     ByteArrayOutputStream jsonByteStream = getByteArrayOutputStream(customObjectString);
@@ -187,7 +187,7 @@ public class CheckHandler implements RequestHandler<SQSEvent, Void> {
           }
         }, jsonByteStream.toByteArray().length, "application/json"));
 
-    logger.log("Checking custom object is succedeed.");
+    logger.info("Checking custom object is succedeed.");
   }
 
   private ByteArrayOutputStream getByteArrayOutputStream(

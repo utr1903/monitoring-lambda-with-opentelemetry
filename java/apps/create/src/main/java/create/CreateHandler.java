@@ -8,8 +8,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -35,7 +37,7 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
     System.setProperty("jdk.tls.client.protocols", "TLSv1.2");
   }
 
-  private LambdaLogger logger;
+  private static final Logger logger = LoggerFactory.getLogger(CreateHandler.class);
 
   private static String INPUT_S3_BUCKET_NAME;
   private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateEvent";
@@ -58,8 +60,6 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
       APIGatewayProxyRequestEvent input,
       Context context) {
 
-    logger = context.getLogger();
-
     try {
       // Parse environment variables
       parseEnvVars();
@@ -78,7 +78,7 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
 
       return createResponse(200, json);
     } catch (Exception e) {
-      logger.log("Storing custom object into S3 is failed! Exception: " + e);
+      logger.error("Storing custom object into S3 is failed! Exception: " + e);
 
       // Enrich span with failure
       enrichSpanWithFailure(context, e);
@@ -88,9 +88,9 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
   }
 
   private void parseEnvVars() {
-    logger.log("Parsing environment variables...");
+    logger.info("Parsing environment variables...");
     INPUT_S3_BUCKET_NAME = System.getenv("INPUT_S3_BUCKET_NAME");
-    logger.log("Parsing environment variables is succeeded.");
+    logger.info("Parsing environment variables is succeeded.");
   }
 
   private CustomObject createCustomObject() {
@@ -109,7 +109,7 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
   private void storeObjectInS3(
       String customObjectString) throws Exception {
 
-    logger.log("Storing custom object into S3...");
+    logger.info("Storing custom object into S3...");
 
     // Get byte array stream of string
     ByteArrayOutputStream jsonByteStream = getByteArrayOutputStream(customObjectString);
@@ -137,10 +137,10 @@ public class CreateHandler implements RequestHandler<APIGatewayProxyRequestEvent
             }
           }, jsonByteStream.toByteArray().length, "application/json"));
 
-      logger.log("Storing custom object into S3 is succeeded.");
+      logger.info("Storing custom object into S3 is succeeded.");
     } catch (Exception e) {
       String msg = "Storing custom object into S3 is failed";
-      logger.log(msg);
+      logger.error(msg);
       throw new Exception(msg + ": " + e.getMessage());
     }
   }
