@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -31,7 +33,7 @@ public class DeleteHandler {
     System.setProperty("jdk.tls.client.protocols", "TLSv1.2");
   }
 
-  private LambdaLogger logger;
+  private static final Logger logger = LoggerFactory.getLogger(DeleteHandler.class);
 
   private static String INPUT_S3_BUCKET_NAME;
   private static final String CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaDeleteEvent";
@@ -53,8 +55,6 @@ public class DeleteHandler {
   public Void handleRequest(
       Context context) {
 
-    logger = context.getLogger();
-
     try {
       // Parse environment variables
       parseEnvVars();
@@ -70,7 +70,7 @@ public class DeleteHandler {
 
       return null;
     } catch (Exception e) {
-      logger.log("Deleting custom objects in the input S3 is failed!: " + e);
+      logger.error("Deleting custom objects in the input S3 is failed!: " + e);
 
       // Enrich span with failure
       enrichSpanWithFailure(context, e);
@@ -80,14 +80,14 @@ public class DeleteHandler {
   }
 
   private void parseEnvVars() {
-    logger.log("Parsing env vars...");
+    logger.info("Parsing env vars...");
     INPUT_S3_BUCKET_NAME = System.getenv("INPUT_S3_BUCKET_NAME");
-    logger.log("Parsing env vars is succeeded.");
+    logger.info("Parsing env vars is succeeded.");
   }
 
   private List<S3Object> getAllCustomObjectsInInputS3() throws Exception {
 
-    logger.log("Getting all custom objects in the input S3...");
+    logger.info("Getting all custom objects in the input S3...");
 
     String bucketName = String.valueOf(INPUT_S3_BUCKET_NAME);
     if (causeError())
@@ -113,11 +113,11 @@ public class DeleteHandler {
 
       } while (listResponse.isTruncated());
 
-      logger.log("Getting all custom objects in the input S3 is succeeded.");
+      logger.info("Getting all custom objects in the input S3 is succeeded.");
       return allCustomObjects;
     } catch (Exception e) {
       String msg = "Getting all custom objects in the input S3 is failed";
-      logger.log(msg);
+      logger.error(msg);
       throw new Exception(msg + ": " + e.getMessage());
     }
   }
@@ -125,7 +125,7 @@ public class DeleteHandler {
   private void deleteAllCustomObjectsInInputS3(
       List<S3Object> allCustomObjects) {
 
-    logger.log("Deleting all custom objects in the input S3...");
+    logger.info("Deleting all custom objects in the input S3...");
 
     // Delete the objects
     List<ObjectIdentifier> objectIdentifiersForDeletion = new ArrayList<>();
@@ -141,16 +141,16 @@ public class DeleteHandler {
     DeleteObjectsResponse deleteObjects = s3Client.deleteObjects(deleteRequest);
 
     if (deleteObjects.hasErrors()) {
-      logger.log("Deleting all custom objects in the input S3 is failed!");
+      logger.error("Deleting all custom objects in the input S3 is failed!");
 
       List<S3Error> errors = deleteObjects.errors();
       for (S3Error error : errors)
-        logger.log("S3 Error: " + error);
+        logger.error("S3 Error: " + error);
 
       return;
     }
 
-    logger.log("Deleting custom objects in the input S3 is succeeded.");
+    logger.info("Deleting custom objects in the input S3 is succeeded.");
   }
 
   private boolean causeError() {

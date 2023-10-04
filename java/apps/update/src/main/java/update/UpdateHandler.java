@@ -8,8 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification.S3EventNotificationRecord;
@@ -37,7 +39,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
     System.setProperty("jdk.tls.client.protocols", "TLSv1.2");
   }
 
-  private LambdaLogger logger;
+  private static final Logger logger = LoggerFactory.getLogger(UpdateHandler.class);
 
   private static String OUTPUT_S3_BUCKET_NAME;
   private static String SQS_QUEUE_URL;
@@ -65,15 +67,13 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
       S3Event input,
       Context context) {
 
-    logger = context.getLogger();
-
     try {
       // Parse environment variables
       parseEnvVars();
 
       // Check if there are any records
       if (input.getRecords().isEmpty()) {
-        logger.log("No records are found in S3 event.");
+        logger.info("No records are found in S3 event.");
         return null;
       }
 
@@ -92,25 +92,25 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
       // Send custom object to SQS
       sendCustomObjectS3InfoToSqs(record);
 
-      logger.log("Updating custom object is succeeded.");
+      logger.info("Updating custom object is succeeded.");
       return null;
     } catch (Exception e) {
-      logger.log("Updating custom object is failed!: " + e);
+      logger.info("Updating custom object is failed!: " + e);
       return null;
     }
   }
 
   private void parseEnvVars() {
-    logger.log("Parsing env vars...");
+    logger.info("Parsing env vars...");
     OUTPUT_S3_BUCKET_NAME = System.getenv("OUTPUT_S3_BUCKET_NAME");
     SQS_QUEUE_URL = System.getenv("SQS_QUEUE_URL");
-    logger.log("Parsing env vars is succeeded.");
+    logger.info("Parsing env vars is succeeded.");
   }
 
   private String getCustomObjectFromInputS3(
       S3EventNotificationRecord record) {
 
-    logger.log("Getting custom object from the input S3...");
+    logger.info("Getting custom object from the input S3...");
 
     // Get bucket name and object key
     String bucket = record.getS3().getBucket().getName();
@@ -127,7 +127,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
     ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
     byte[] customObjectAsBytes = responseBytes.asByteArray();
 
-    logger.log("Getting custom object from the input S3 is succedeed.");
+    logger.info("Getting custom object from the input S3 is succedeed.");
 
     // Parse as string and return
     return new String(customObjectAsBytes, StandardCharsets.UTF_8);
@@ -145,7 +145,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
       String key,
       String customObjectString) {
 
-    logger.log("Updating custom object in output S3...");
+    logger.info("Updating custom object in output S3...");
 
     // Get byte array stream of string
     ByteArrayOutputStream jsonByteStream = getByteArrayOutputStream(customObjectString);
@@ -167,7 +167,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
           }
         }, jsonByteStream.toByteArray().length, "application/json"));
 
-    logger.log("Updating custom object in output S3 is succedeed.");
+    logger.info("Updating custom object in output S3 is succedeed.");
   }
 
   private ByteArrayOutputStream getByteArrayOutputStream(
@@ -189,7 +189,7 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
   private void sendCustomObjectS3InfoToSqs(
       S3EventNotificationRecord record) {
 
-    logger.log("Sending S3 info of the updated custom object to SQS...");
+    logger.info("Sending S3 info of the updated custom object to SQS...");
 
     // Get bucket name and object key
     String key = record.getS3().getObject().getKey();
@@ -208,6 +208,6 @@ public class UpdateHandler implements RequestHandler<S3Event, Void> {
         .withMessageBody(json);
     sqs.sendMessage(req);
 
-    logger.log("Sending S3 info of the updated custom object to SQS is succeeded.");
+    logger.info("Sending S3 info of the updated custom object to SQS is succeeded.");
   }
 }
