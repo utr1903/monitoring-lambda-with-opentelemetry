@@ -5,6 +5,7 @@ import json
 import logging
 import random
 from datetime import datetime
+import uuid
 
 from python.boto3 import client
 from python.opentelemetry import trace
@@ -40,7 +41,8 @@ def cause_error():
 
 
 def store_custom_object_in_s3(
-    body,
+        correlation_id,
+        body,
 ):
     logger.info('Storing custom object into S3...')
 
@@ -48,11 +50,20 @@ def store_custom_object_in_s3(
     if cause_error():
         bucket_name = 'wrong-bucket-name'
 
+    # Generate key name
+    key_name = str(uuid.uuid4())
+
+    # Add key name as attribute
+    trace.get_current_span().set_attribute('bucket.key.name', key_name)
+
     try:
         client_s3.put_object(
             Bucket=bucket_name,
-            Key=f'{datetime.now().timestamp()}',
+            Key=key_name,
             Body=json.dumps(body),
+            Metadata={
+                "correlation.id": correlation_id,
+            }
         )
 
         logger.info('Storing custom object into S3 is succeeded.')
@@ -64,9 +75,11 @@ def store_custom_object_in_s3(
 
 
 def enrich_span_with_success(
-        context
+        context,
+        correlation_id,
 ):
     span = trace.get_current_span()
+    span.set_attribute('correlation.id', correlation_id)
 
     span.add_event(
         CUSTOM_OTEL_SPAN_EVENT_NAME,
@@ -78,11 +91,13 @@ def enrich_span_with_success(
 
 
 def enrich_span_with_failure(
-    context,
-    e,
+        context,
+        correlation_id,
+        e,
 ):
 
     span = trace.get_current_span()
+    span.set_attribute('correlation.id', correlation_id)
 
     span.set_status(Status(StatusCode.ERROR), 'Create Lambda is failed.')
     span.record_exception(exception=e, escaped=True)
@@ -111,21 +126,24 @@ def create_response(
 
 def lambda_handler(event, context):
 
+    # Generate correlation ID
+    correlation_id = str(uuid.uuid4())
+
     try:
 
         # Create custom object
         custom_object = create_custom_object()
 
         # Store the custom object in S3
-        store_custom_object_in_s3(custom_object)
+        store_custom_object_in_s3(correlation_id, custom_object)
 
         # Enrich span with success
-        enrich_span_with_success(context)
+        enrich_span_with_success(context, correlation_id)
 
         return create_response(200, json.dumps(custom_object))
     except Exception as e:
 
         # Enrich span with failure
-        enrich_span_with_failure(context, e)
+        enrich_span_with_failure(context, correlation_id, e)
 
-        return create_response(200, json.dumps(custom_object))
+        return create_response(500, json.dumps(custom_object))
