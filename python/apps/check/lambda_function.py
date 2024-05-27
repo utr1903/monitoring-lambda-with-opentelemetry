@@ -119,10 +119,9 @@ def enrich_span_with_failure(
     bucket_name,
     key_name,
 ):
-
     span = trace.get_current_span()
 
-    span.set_status(Status(StatusCode.ERROR), "Check Lambda is failed.")
+    span.set_status(StatusCode.ERROR, "Check Lambda is failed.")
     span.record_exception(exception=e, escaped=True)
 
     span.add_event(

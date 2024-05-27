@@ -53,8 +53,10 @@ def store_custom_object_in_s3(
     # Generate key name
     key_name = str(uuid.uuid4())
 
-    # Add key name as attribute
-    trace.get_current_span().set_attribute("bucket.key.name", key_name)
+    # Add bucket and key name as attributes
+    span = trace.get_current_span()
+    span.set_attribute("bucket.name", bucket_name)
+    span.set_attribute("key.name", key_name)
 
     try:
         client_s3.put_object(
@@ -96,11 +98,10 @@ def enrich_span_with_failure(
     correlation_id,
     e,
 ):
-
     span = trace.get_current_span()
     span.set_attribute("correlation.id", correlation_id)
 
-    span.set_status(Status(StatusCode.ERROR), "Create Lambda is failed.")
+    span.set_status(StatusCode.ERROR, "Create Lambda is failed.")
     span.record_exception(exception=e, escaped=True)
 
     span.add_event(

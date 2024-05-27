@@ -76,10 +76,9 @@ def enrich_span_with_failure(
     context,
     e,
 ):
-
     span = trace.get_current_span()
 
-    span.set_status(Status(StatusCode.ERROR), "Delete Lambda is failed.")
+    span.set_status(StatusCode.ERROR, "Delete Lambda is failed.")
     span.record_exception(exception=e, escaped=True)
 
     span.add_event(
