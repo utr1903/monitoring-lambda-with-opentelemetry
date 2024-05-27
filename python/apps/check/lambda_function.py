@@ -9,7 +9,7 @@ from python.boto3 import client
 from python.opentelemetry import trace
 from python.opentelemetry.trace import Status, StatusCode
 
-CUSTOM_OTEL_SPAN_EVENT_NAME = 'LambdaCheckEvent'
+CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCheckEvent"
 
 # Reset and init logger
 logger = logging.getLogger()
@@ -18,50 +18,51 @@ if logger.handlers:
         logger.removeHandler(handler)
 logging.basicConfig(level=logging.INFO)
 
-client_s3 = client('s3')
+client_s3 = client("s3")
 
 random.seed(datetime.now().timestamp())
 
 
 def parse_message(
-        record,
+    record,
 ):
-    logger.info('Parsing SQS message...')
+    logger.info("Parsing SQS message...")
 
-    message = json.loads(record['body'])
-    bucket_name = message['bucket']
-    key_name = message['key']
+    message = json.loads(record["body"])
+    bucket_name = message["bucket"]
+    key_name = message["key"]
 
-    logger.info('Parsing SQS message is succeeded.')
+    logger.info("Parsing SQS message is succeeded.")
     return bucket_name, key_name
 
 
 def get_custom_object_from_s3(
-        bucket_name,
-        key_name,
+    bucket_name,
+    key_name,
 ):
-    logger.info('Getting custom object from the S3...')
+    logger.info("Getting custom object from the S3...")
 
     try:
         custom_object = json.loads(
             client_s3.get_object(
                 Bucket=bucket_name,
                 Key=key_name,
-            )['Body'].read())
+            )["Body"].read()
+        )
 
-        logger.info('Getting custom object from the S3 is succeeded.')
+        logger.info("Getting custom object from the S3 is succeeded.")
         return custom_object
 
     except Exception as e:
-        msg = f'Getting custom object from the S3 is failed: {str(e)}'
+        msg = f"Getting custom object from the S3 is failed: {str(e)}"
         logger.error(msg)
         raise Exception(msg)
 
 
 def check_custom_object(
-        custom_object,
+    custom_object,
 ):
-    custom_object['isChecked'] = True
+    custom_object["isChecked"] = True
 
 
 def cause_error():
@@ -70,15 +71,15 @@ def cause_error():
 
 
 def store_custom_object_in_s3(
-        bucket_name,
-        key_name,
-        custom_object,
+    bucket_name,
+    key_name,
+    custom_object,
 ):
     try:
-        logger.info('Checking custom object...')
+        logger.info("Checking custom object...")
 
         if cause_error():
-            key_name = 'wrong-key-name'
+            key_name = "wrong-key-name"
 
         client_s3.put_object(
             Body=json.dumps(custom_object),
@@ -86,56 +87,58 @@ def store_custom_object_in_s3(
             Key=key_name,
         )
 
-        logger.info('Checking custom object is succeeded.')
+        logger.info("Checking custom object is succeeded.")
 
     except Exception as e:
-        msg = f'Checking custom object is failed: {str(e)}'
+        msg = f"Checking custom object is failed: {str(e)}"
         logger.error(msg)
         raise Exception(msg)
 
 
 def enrich_span_with_success(
-        context,
-        bucket_name,
-        key_name,
+    context,
+    bucket_name,
+    key_name,
 ):
     span = trace.get_current_span()
 
     span.add_event(
         CUSTOM_OTEL_SPAN_EVENT_NAME,
         attributes={
-            'is.successful': True,
-            'bucket.id': bucket_name,
-            'key.name': key_name,
-            'aws.request.id': context.aws_request_id
-        })
+            "is.successful": True,
+            "bucket.id": bucket_name,
+            "key.name": key_name,
+            "aws.request.id": context.aws_request_id,
+        },
+    )
 
 
 def enrich_span_with_failure(
-        context,
-        e,
-        bucket_name,
-        key_name,
+    context,
+    e,
+    bucket_name,
+    key_name,
 ):
 
     span = trace.get_current_span()
 
-    span.set_status(Status(StatusCode.ERROR), 'Check Lambda is failed.')
+    span.set_status(Status(StatusCode.ERROR), "Check Lambda is failed.")
     span.record_exception(exception=e, escaped=True)
 
     span.add_event(
         CUSTOM_OTEL_SPAN_EVENT_NAME,
         attributes={
-            'is.successful': False,
-            'bucket.id': bucket_name,
-            'key.name': key_name,
-            'aws.request.id': context.aws_request_id
-        })
+            "is.successful": False,
+            "bucket.id": bucket_name,
+            "key.name": key_name,
+            "aws.request.id": context.aws_request_id,
+        },
+    )
 
 
 def lambda_handler(event, context):
 
-    for record in event['Records']:
+    for record in event["Records"]:
 
         # Parse SQS message
         bucket_name, key_name = parse_message(record)
@@ -149,8 +152,7 @@ def lambda_handler(event, context):
             check_custom_object(custom_object)
 
             # Store the custom object in S3
-            store_custom_object_in_s3(
-                bucket_name, key_name, custom_object)
+            store_custom_object_in_s3(bucket_name, key_name, custom_object)
 
             # Enrich span with success
             enrich_span_with_success(context, bucket_name, key_name)
