@@ -1,15 +1,14 @@
 #! /usr/bin/python3
 
 import os
-import boto3
 import json
 import logging
 import random
-import traceback
-
 from datetime import datetime
+
+from python.boto3 import client
 from python.opentelemetry import trace
-from python.opentelemetry.semconv.trace import SpanAttributes
+from python.opentelemetry.trace import Status, StatusCode
 
 CUSTOM_OTEL_SPAN_EVENT_NAME = 'LambdaCreateEvent'
 
@@ -20,7 +19,7 @@ if logger.handlers:
         logger.removeHandler(handler)
 logging.basicConfig(level=logging.INFO)
 
-client_s3 = boto3.client('s3')
+client_s3 = client('s3')
 
 random.seed(datetime.now().timestamp())
 
@@ -85,9 +84,7 @@ def enrich_span_with_failure(
 
     span = trace.get_current_span()
 
-    span.set_attribute('otel.status_code', 'ERROR')
-    span.set_attribute('otel.status_description', 'Delete Lambda is failed.')
-
+    span.set_status(Status(StatusCode.ERROR), 'Create Lambda is failed.')
     span.record_exception(exception=e, escaped=True)
 
     span.add_event(
