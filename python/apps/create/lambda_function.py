@@ -7,24 +7,43 @@ import random
 import uuid
 from datetime import datetime
 
-from python.boto3 import client
+from boto3 import client
 from python.opentelemetry import trace
-from python.opentelemetry.trace import Status, StatusCode
+from python.opentelemetry.trace import StatusCode
+from python.pythonjsonlogger import jsonlogger
 
 CUSTOM_OTEL_SPAN_EVENT_NAME = "LambdaCreateEvent"
 
-# Reset and init logger
+# Reset logger
 logger = logging.getLogger()
 if logger.handlers:
     for handler in logger.handlers:
         logger.removeHandler(handler)
-logging.basicConfig(level=logging.INFO)
+
+# Init logger
+logHandler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter()
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+logger.setLevel(level=logging.INFO)
 
 client_s3 = client("s3")
 
 random.seed(datetime.now().timestamp())
 
+OTEL_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME")
 INPUT_S3_BUCKET_NAME = os.getenv("INPUT_S3_BUCKET_NAME")
+
+
+def log(level, msg, attrs={}):
+    span = trace.get_current_span()
+    span_context = span.get_span_context()
+    if span_context.is_valid:
+        attrs["service.name"] = OTEL_SERVICE_NAME
+        attrs["trace.id"] = "{trace:032x}".format(trace=span_context.trace_id)
+        attrs["span.id"] = "{span:016x}".format(span=span_context.span_id)
+
+    logger.log(level=level, msg=msg, extra=attrs)
 
 
 def create_custom_object():
@@ -44,14 +63,22 @@ def store_custom_object_in_s3(
     correlation_id,
     body,
 ):
-    logger.info("Storing custom object into S3...")
-
     bucket_name = f"{INPUT_S3_BUCKET_NAME}"
     if cause_error():
         bucket_name = "wrong-bucket-name"
 
     # Generate key name
     key_name = str(uuid.uuid4())
+
+    log(
+        level=logging.INFO,
+        msg="Storing custom object into S3...",
+        attrs={
+            "correlation.id": correlation_id,
+            "bucket.name": bucket_name,
+            "key.name": key_name,
+        },
+    )
 
     # Add bucket and key name as attributes
     span = trace.get_current_span()
@@ -64,15 +91,32 @@ def store_custom_object_in_s3(
             Key=key_name,
             Body=json.dumps(body),
             Metadata={
-                "correlation.id": correlation_id,
+                "correlation-id": correlation_id,
             },
         )
 
-        logger.info("Storing custom object into S3 is succeeded.")
+        log(
+            level=logging.INFO,
+            msg="Storing custom object into S3 is succeeded.",
+            attrs={
+                "correlation.id": correlation_id,
+                "bucket.name": bucket_name,
+                "key.name": key_name,
+            },
+        )
 
     except Exception as e:
-        msg = f"Storing custom object into S3 is failed: {str(e)}"
-        logger.error(msg)
+        msg = "Storing custom object into S3 is failed."
+        log(
+            level=logging.ERROR,
+            msg=msg,
+            attrs={
+                "correlation.id": correlation_id,
+                "bucket.name": bucket_name,
+                "key.name": key_name,
+                "error.message": str(e),
+            },
+        )
         raise Exception(msg)
 
 

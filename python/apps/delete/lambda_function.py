@@ -5,7 +5,7 @@ import os
 import random
 from datetime import datetime
 
-from python.boto3 import client
+from boto3 import client
 from python.opentelemetry import trace
 from python.opentelemetry.trace import Status, StatusCode
 
