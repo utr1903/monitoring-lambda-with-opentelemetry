@@ -48,7 +48,7 @@ resource "aws_lambda_function" "delete" {
   timeout = 10
 
   layers = [
-    "arn:aws:lambda:${var.AWS_REGION}:901920570463:layer:aws-otel-python-amd64-ver-1-19-0:1"
+    "arn:aws:lambda:${var.AWS_REGION}:901920570463:layer:aws-otel-python-amd64-ver-1-24-0:1"
   ]
 
   environment {

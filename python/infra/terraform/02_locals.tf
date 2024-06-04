@@ -1,8 +1,8 @@
 locals {
 
   # S3 Bucket
-  input_s3_bucket_name  = "utr1903-input-monitoring-lambda-with-opentelemetry-python"
-  output_s3_bucket_name = "utr1903-output-monitoring-lambda-with-opentelemetry-python"
+  input_s3_bucket_name  = "utr1903-input-python"
+  output_s3_bucket_name = "utr1903-output-python"
 
   # SQS
   sqs_queue_name = "python-sqs-queue.fifo"
