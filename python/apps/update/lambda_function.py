@@ -169,7 +169,6 @@ def store_custom_object_in_output_s3(
 
 def send_custom_object_s3_info_to_sqs(
     correlation_id,
-    bucket_name,
     key_name,
 ):
     try:
@@ -178,26 +177,29 @@ def send_custom_object_s3_info_to_sqs(
             msg="Sending S3 info of the updated custom object to SQS...",
             attrs={
                 "correlation.id": correlation_id,
-                "bucket.name": bucket_name,
+                "bucket.name": OUTPUT_S3_BUCKET_NAME,
                 "key.name": key_name,
             },
         )
 
         message = {
-            "bucket": bucket_name,
+            "bucket": OUTPUT_S3_BUCKET_NAME,
             "key": key_name,
+        }
+
+        # Create message attributes
+        msg_attrs = {
+            "correlation-id": {
+                "DataType": "String",
+                "StringValue": correlation_id,
+            }
         }
 
         client_sqs.send_message(
             MessageGroupId=SQS_MESSAGE_GROUP_ID,
             QueueUrl=SQS_QUEUE_URL,
             MessageBody=json.dumps(message),
-            MessageAttributes={
-                "correlation-id": {
-                    "DataType": "String",
-                    "StringValue": correlation_id,
-                },
-            },
+            MessageAttributes=msg_attrs,
         )
 
         log(
@@ -205,7 +207,7 @@ def send_custom_object_s3_info_to_sqs(
             msg="Sending S3 info of the updated custom object to SQS is succeeded.",
             attrs={
                 "correlation.id": correlation_id,
-                "bucket.name": bucket_name,
+                "bucket.name": OUTPUT_S3_BUCKET_NAME,
                 "key.name": key_name,
             },
         )
@@ -217,7 +219,7 @@ def send_custom_object_s3_info_to_sqs(
             msg=msg,
             attrs={
                 "correlation.id": correlation_id,
-                "bucket.name": bucket_name,
+                "bucket.name": OUTPUT_S3_BUCKET_NAME,
                 "key.name": key_name,
                 "error.message": str(e),
             },
@@ -276,7 +278,7 @@ def lambda_handler(event, context):
         store_custom_object_in_output_s3(correlation_id, key_name, custom_object)
 
         # Send custom object to SQS
-        send_custom_object_s3_info_to_sqs(correlation_id, bucket_name, key_name)
+        send_custom_object_s3_info_to_sqs(correlation_id, key_name)
 
         # Enrich span with success
         enrich_span_with_success(context, correlation_id)
